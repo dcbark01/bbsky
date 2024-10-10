@@ -10,3 +10,20 @@
 #   universal: true
 
 -e file:.
+attrs==24.2.0
+    # via bbsky
+    # via cattrs
+bottle==0.13.1
+    # via bbsky
+cattrs==24.1.2
+    # via bbsky
+certifi==2024.8.30
+    # via requests
+charset-normalizer==3.4.0
+    # via requests
+idna==3.10
+    # via requests
+requests==2.32.3
+    # via bbsky
+urllib3==2.2.3
+    # via requests

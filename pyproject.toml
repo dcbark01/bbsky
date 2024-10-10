@@ -1,3 +1,10 @@
+[tool.rye.scripts]
+fmt = "rye fmt"
+lint = "rye lint --fix"
+check = "pyright"
+test = "rye test"
+all = { chain = ["fmt", "lint", "check", "test"] }
+
 [project]
 name = "bbsky"
 version = "0.1.0"
@@ -5,9 +12,14 @@ description = "Client for Blackbaud Sky API"
 authors = [
     { name = "dcbark01", email = "dcbark01@gmail.com" }
 ]
-dependencies = []
+dependencies = [
+    "attrs~=24.2.0",
+    "cattrs~=24.1.2",
+    "bottle~=0.13.1",
+    "requests~=2.32.3",
+]
 readme = "README.md"
-requires-python = ">= 3.9"
+requires-python = ">= 3.10"
 
 [build-system]
 requires = ["pdm-backend"]
@@ -15,5 +27,36 @@ build-backend = "pdm.backend"
 
 [tool.rye]
 managed = true
-dev-dependencies = []
+dev-dependencies = [
+    "pyright~=1.1.384",
+    "pytest~=8.3.3",
+]
 universal = true
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+exclude = [
+    "build",
+    "dist",
+    ".venv",
+]
+
+[tool.ruff.lint]
+select = [
+	"A",    # warn about shadowing built-ins
+	"E",    # style stuff, whitespaces
+	"F",    # important pyflakes lints
+	"I",    # import sorting
+	"N",    # naming
+	"T100", # breakpoints
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["bbsky"]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+strict = ["**/*.py"]
+pythonVersion = "3.10"

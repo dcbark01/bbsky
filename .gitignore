@@ -6,5 +6,6 @@ dist/
 wheels/
 *.egg-info
 
-# venv
+.idea/
+.vscode/
 .venv
