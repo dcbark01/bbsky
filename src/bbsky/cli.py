@@ -11,6 +11,7 @@ class CLI(MultiCommand):
         "server",
         "config",
         "token",
+        "paths",
     ]
 
     def list_commands(self, ctx: Context) -> list[str]:
