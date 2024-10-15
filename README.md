@@ -1,3 +1,3 @@
 # bbsky
 
-Describe your project here.
+Client for Blackbaud Sky API
