@@ -18,3 +18,9 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: end-of-file-fixer
+
+  - repo: https://github.com/tweag/FawltyDeps
+    rev: v0.17.0
+    hooks:
+      - id: check-undeclared
+      - id: check-unused
