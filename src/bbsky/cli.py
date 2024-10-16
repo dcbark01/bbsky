@@ -10,7 +10,7 @@ class CLI(MultiCommand):
     COMMANDS = [
         "server",
         "config",
-        "token",
+        "tokens",
         "paths",
     ]
 
