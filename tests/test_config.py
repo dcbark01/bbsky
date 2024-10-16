@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 
-from bbsky.abstractions import URL
 from bbsky.config import SkyConfig
+from bbsky.data_cls import URL
 
 
 @pytest.fixture

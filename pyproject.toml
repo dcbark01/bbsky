@@ -70,6 +70,4 @@ strict = ["**/*.py"]
 pythonVersion = "3.10"
 
 [tool.fawltydeps]
-code = [
-    "src",
-]
+code = "src"

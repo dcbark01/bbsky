@@ -21,8 +21,8 @@ from bottle import (  # type: ignore
     run,  # type: ignore
 )  # type: ignore
 
-from bbsky.abstractions import URL
 from bbsky.config import SkyConfig
+from bbsky.data_cls import URL
 from bbsky.paths import BBSKY_TOKEN_FILE
 from bbsky.token import OAuth2Token
 

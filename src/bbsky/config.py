@@ -7,7 +7,7 @@ from typing import Any, Callable
 import click
 from attrs import define
 
-from .abstractions import URL, structure, unstructure
+from .data_cls import URL, structure, unstructure
 from .paths import BBSKY_CONFIG_DIR, BBSKY_CONFIG_FILE
 
 
