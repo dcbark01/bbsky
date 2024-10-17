@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 K_contra = TypeVar("K_contra", contravariant=True)
 KH = TypeVar("KH", bound=Hashable)
-# KS = TypeVar("KS", bound=Union[str, Path])
 V = TypeVar("V")
 
 
