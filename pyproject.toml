@@ -22,6 +22,7 @@ dependencies = [
     "click~=8.1.7",
     "pendulum~=3.0.0",
     "pyright~=1.1.385",
+    "redis~=5.1.1",
 ]
 readme = "README.md"
 requires-python = ">= 3.10"

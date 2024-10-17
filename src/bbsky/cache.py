@@ -5,6 +5,9 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Dict, Hashable, Optional, Protocol, TypeVar, Union
 
+import redis
+from click import UsageError
+
 from bbsky.data_cls import TZ, DateTime, Duration
 
 logger = logging.getLogger(__name__)
@@ -139,3 +142,58 @@ class DiskCache(Cache[KH, V]):
             if path.is_file():
                 path.unlink()
                 logger.info(f"Cleared cache entry: {path}")
+
+
+class RedisCache(Cache[KH, V]):
+    """
+    A Redis-backed cache implementation.
+
+    It requires a running Redis server.
+    """
+
+    def __init__(self, client: redis.Redis, allow_clearing: bool = False) -> None:
+        self.client = client
+        self.allow_clearing = allow_clearing
+        logger.info("Initialized RedisCache")
+
+    @staticmethod
+    def _serialize_key(key: KH) -> str:
+        return json.dumps(key)
+
+    @staticmethod
+    def _serialize_value(value: V) -> str:
+        return json.dumps(value)
+
+    @staticmethod
+    def _deserialize_value(value: Optional[bytes]) -> Optional[V]:
+        if value is None:
+            return None
+        return json.loads(value.decode("utf-8"))
+
+    def get(self, key: KH) -> Optional[V]:
+        serialized_key = self._serialize_key(key)
+        serialized_value = self.client.get(serialized_key)
+        value = self._deserialize_value(serialized_value)  # type: ignore
+        if value is None:
+            logger.debug(f"Cache miss for key: {key}")
+        else:
+            logger.debug(f"Cache hit for key: {key}")
+        return value
+
+    def set(self, key: KH, value: V, ttl: Optional[int] = None) -> None:
+        serialized_key = self._serialize_key(key)
+        serialized_value = self._serialize_value(value)
+        if ttl:
+            self.client.setex(serialized_key, ttl, serialized_value)
+        else:
+            self.client.set(serialized_key, serialized_value)
+
+    def delete(self, key: KH) -> None:
+        serialized_key = self._serialize_key(key)
+        self.client.delete(serialized_key)
+
+    def clear(self) -> None:
+        if not self.allow_clearing:
+            raise UsageError("Clearing the cache is not allowed for this instance of RedisCache")
+        self.client.flushdb()  # type: ignore
+        logger.info("Cleared Redis cache")
