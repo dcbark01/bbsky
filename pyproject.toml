@@ -69,6 +69,7 @@ known-first-party = ["bbsky"]
 venvPath = "."
 venv = ".venv"
 strict = ["**/*.py"]
+ignore = ["tests/"]
 pythonVersion = "3.10"
 
 [tool.fawltydeps]

@@ -1,9 +1,11 @@
 import pendulum
 import yarl
 from cattrs import Converter
-from pendulum import DateTime
 
 URL = yarl.URL
+TZ = pendulum.UTC
+DateTime = pendulum.DateTime
+Duration = pendulum.Duration
 
 converter = Converter()
 structure = converter.structure
