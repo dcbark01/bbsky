@@ -14,6 +14,7 @@ def valid_credentials_dict() -> dict[str, str]:
         "client_id": "test_client_id",
         "client_secret": "test_client_secret",
         "redirect_uri": "https://example.com/callback",
+        "subscription_key": "sk-1234",
     }
 
 
@@ -26,6 +27,7 @@ def test_app_credentials_from_dict(valid_credentials_dict: dict[str, str], valid
     assert valid_credentials.client_id == valid_credentials_dict["client_id"]
     assert valid_credentials.client_secret == valid_credentials_dict["client_secret"]
     assert valid_credentials.redirect_uri == URL(valid_credentials_dict["redirect_uri"])
+    assert valid_credentials.subscription_key == valid_credentials_dict["subscription_key"]
 
 
 def test_app_credentials_to_dict(valid_credentials: SkyConfig, valid_credentials_dict: dict[str, str]):
@@ -33,17 +35,20 @@ def test_app_credentials_to_dict(valid_credentials: SkyConfig, valid_credentials
     assert result["client_id"] == valid_credentials_dict["client_id"]
     assert result["client_secret"] == valid_credentials_dict["client_secret"]
     assert result["redirect_uri"] == valid_credentials_dict["redirect_uri"]
+    assert result["subscription_key"] == valid_credentials_dict["subscription_key"]
 
 
 def test_app_credentials_from_env(monkeypatch: MonkeyPatch, valid_credentials_dict: dict[str, str]) -> None:
     monkeypatch.setenv("BLACKBAUD_CLIENT_ID", valid_credentials_dict["client_id"])
     monkeypatch.setenv("BLACKBAUD_CLIENT_SECRET", valid_credentials_dict["client_secret"])
     monkeypatch.setenv("BLACKBAUD_REDIRECT_URI", valid_credentials_dict["redirect_uri"])
+    monkeypatch.setenv("BLACKBAUD_SUBSCRIPTION_KEY", valid_credentials_dict["subscription_key"])
 
     credentials = SkyConfig.from_env()
     assert credentials.client_id == valid_credentials_dict["client_id"]
     assert credentials.client_secret == valid_credentials_dict["client_secret"]
     assert credentials.redirect_uri == URL(valid_credentials_dict["redirect_uri"])
+    assert credentials.subscription_key == valid_credentials_dict["subscription_key"]
 
 
 def test_app_credentials_from_json_file(tmp_path: Path, valid_credentials_dict: dict[str, str]) -> None:
@@ -54,6 +59,7 @@ def test_app_credentials_from_json_file(tmp_path: Path, valid_credentials_dict: 
     assert credentials.client_id == valid_credentials_dict["client_id"]
     assert credentials.client_secret == valid_credentials_dict["client_secret"]
     assert credentials.redirect_uri == URL(valid_credentials_dict["redirect_uri"])
+    assert credentials.subscription_key == valid_credentials_dict["subscription_key"]
 
 
 def test_app_credentials_to_json_file(tmp_path: Path, valid_credentials: SkyConfig) -> None:
@@ -66,6 +72,7 @@ def test_app_credentials_from_env_missing_env_var(monkeypatch: MonkeyPatch) -> N
     monkeypatch.delenv("BLACKBAUD_CLIENT_ID", raising=False)
     monkeypatch.setenv("BLACKBAUD_CLIENT_SECRET", "test_secret")
     monkeypatch.setenv("BLACKBAUD_REDIRECT_URI", "https://example.com/callback")
+    monkeypatch.setenv("BLACKBAUD_SUBSCRIPTION_KEY", "sk-1234")
 
     with pytest.raises(KeyError):
         SkyConfig.from_env()
@@ -95,6 +102,7 @@ def test_stored_config_from_json_file(
     assert credentials.client_id == valid_credentials_dict["client_id"]
     assert credentials.client_secret == valid_credentials_dict["client_secret"]
     assert credentials.redirect_uri == URL(valid_credentials_dict["redirect_uri"])
+    assert credentials.subscription_key == valid_credentials_dict["subscription_key"]
 
 
 def test_stored_config_file_not_found(monkeypatch: MonkeyPatch) -> None:
