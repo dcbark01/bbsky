@@ -133,5 +133,19 @@ def purge(token_file: Path) -> None:
         click.echo("Aborted. Token not purged.")
 
 
+@click.command()
+@click.option("-t", "--token-file", default=BBSKY_TOKEN_FILE, type=click.Path())
+def refresh(token_file: Path) -> None:
+    """Refresh the current token."""
+    token = OAuth2Token.load(token_file)
+    config = SkyConfig.load()
+
+    new_token = token.refresh(token, config)
+    new_token.to_cache()
+
+    click.echo(f"Token refreshed: {str(new_token)}")
+
+
 cli.add_command(show)
 cli.add_command(purge)
+cli.add_command(refresh)
