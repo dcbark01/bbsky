@@ -1,5 +1,6 @@
 import json
 import os
+from enum import Enum
 from functools import wraps
 from pathlib import Path
 from typing import Any, Callable
@@ -9,6 +10,13 @@ from attrs import define
 
 from .data_cls import URL, structure, unstructure
 from .paths import BBSKY_CONFIG_DIR, BBSKY_CONFIG_FILE
+
+
+class SkyConfigEnvVars(Enum):
+    CLIENT_ID = "BLACKBAUD_CLIENT_ID"
+    CLIENT_SECRET = "BLACKBAUD_CLIENT_SECRET"
+    REDIRECT_URI = "BLACKBAUD_REDIRECT_URI"
+    SUBSCRIPTION_KEY = "BLACKBAUD_SUBSCRIPTION_KEY"
 
 
 def ensure_config_dir(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -26,6 +34,11 @@ def ensure_config_dir(func: Callable[..., Any]) -> Callable[..., Any]:
 class SkyConfig:
     """
     Blackbaud app authentication credentials
+
+    Loading Priority:
+
+    1. Environment variables
+    2. JSON file (default: ~/.bbsky/config/config.json)
 
     See this URL for helpful troubleshooting tips:
     https://developer.blackbaud.com/skyapi/docs/authorization/common-auth-issues
@@ -49,10 +62,10 @@ class SkyConfig:
     def from_env(cls) -> "SkyConfig":
         return cls.from_dict(
             {
-                "client_id": os.environ["BLACKBAUD_CLIENT_ID"],
-                "client_secret": os.environ["BLACKBAUD_CLIENT_SECRET"],
-                "redirect_uri": os.environ["BLACKBAUD_REDIRECT_URI"],
-                "subscription_key": os.environ["BLACKBAUD_SUBSCRIPTION_KEY"],
+                "client_id": os.environ[SkyConfigEnvVars.CLIENT_ID.value],
+                "client_secret": os.environ[SkyConfigEnvVars.CLIENT_SECRET.value],
+                "redirect_uri": os.environ[SkyConfigEnvVars.REDIRECT_URI.value],
+                "subscription_key": os.environ[SkyConfigEnvVars.SUBSCRIPTION_KEY.value],
             }
         )
 
