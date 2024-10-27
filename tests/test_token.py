@@ -2,9 +2,11 @@ import json
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 
+from bbsky.config import SkyConfig
 from bbsky.tokens import OAuth2Token
 
 
@@ -89,3 +91,46 @@ def test_token_load_invalid_json(tmp_path: Path):
     invalid_json_file.write_text("{ invalid json }")
     with pytest.raises(json.JSONDecodeError):
         OAuth2Token.load(invalid_json_file)
+
+
+def refresh_token_successful_response(
+    mock_httpx_post, valid_token: OAuth2Token, valid_config: SkyConfig, new_token_data: dict[str, Any]
+) -> None:
+    mock_httpx_post.return_value.json.return_value = new_token_data
+    mock_httpx_post.return_value.raise_for_status.return_value = None
+
+    new_token = valid_token.refresh(valid_token, valid_config)
+
+    assert new_token.access_token == new_token_data["access_token"]
+    assert new_token.refresh_token == new_token_data["refresh_token"]
+    assert new_token.expires_in == new_token_data["expires_in"]
+    assert new_token.refresh_token_expires_in == new_token_data["refresh_token_expires_in"]
+    assert new_token.token_type == new_token_data["token_type"]
+    assert new_token.environment_id == new_token_data["environment_id"]
+    assert new_token.environment_name == new_token_data["environment_name"]
+    assert new_token.legal_entity_id == new_token_data["legal_entity_id"]
+    assert new_token.legal_entity_name == new_token_data["legal_entity_name"]
+    assert new_token.user_id == new_token_data["user_id"]
+    assert new_token.email == new_token_data["email"]
+    assert new_token.family_name == new_token_data["family_name"]
+    assert new_token.given_name == new_token_data["given_name"]
+    assert new_token.mode == new_token_data["mode"]
+
+
+def refresh_token_http_error(mock_httpx_post, valid_token: OAuth2Token, valid_config: SkyConfig) -> None:
+    mock_httpx_post.return_value.raise_for_status.side_effect = httpx.HTTPStatusError(
+        message="Error",
+        request=httpx.Request("POST", "https://oauth2.sky.blackbaud.com/token"),
+        response=httpx.Response(400, request=httpx.Request("POST", "https://oauth2.sky.blackbaud.com/token")),
+    )
+
+    with pytest.raises(httpx.HTTPStatusError):
+        valid_token.refresh(valid_token, valid_config)
+
+
+def refresh_token_invalid_response(mock_httpx_post, valid_token: OAuth2Token, valid_config: SkyConfig) -> None:
+    mock_httpx_post.return_value.json.return_value = {"invalid": "response"}
+    mock_httpx_post.return_value.raise_for_status.return_value = None
+
+    with pytest.raises(TypeError):
+        valid_token.refresh(valid_token, valid_config)
