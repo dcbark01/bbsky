@@ -22,6 +22,7 @@ from bottle import (  # type: ignore
 )  # type: ignore
 
 from bbsky.config import SkyConfig
+from bbsky.constants import TOKEN_URL
 from bbsky.data_cls import URL
 from bbsky.paths import BBSKY_TOKEN_FILE
 from bbsky.tokens import OAuth2Token
@@ -137,8 +138,6 @@ def login_to_blackbaud() -> Response:
 
 @route("/callback")
 def callback_from_blackbaud() -> Response:
-    token_url = "https://oauth2.sky.blackbaud.com/token"
-
     # Step 2: Get the authorization code from the request
     global auth_code
     auth_code = request.GET.get("code")  # type: ignore
@@ -162,7 +161,7 @@ def callback_from_blackbaud() -> Response:
         "Content-Type": "application/x-www-form-urlencoded",
         "Authorization": f"Basic {base64.b64encode(client_id.encode()).decode()}",
     }
-    response = httpx.post(token_url, data=token_params, headers=headers)
+    response = httpx.post(str(TOKEN_URL), data=token_params, headers=headers)
 
     global oauth_token
 

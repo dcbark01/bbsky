@@ -9,11 +9,10 @@ import httpx
 from attrs import asdict, define
 
 from bbsky.config import SkyConfig
+from bbsky.constants import TOKEN_URL
 from bbsky.paths import BBSKY_TOKEN_FILE
 
 logger = logging.getLogger(__name__)
-
-TOKEN_URL = "https://oauth2.sky.blackbaud.com/token"
 
 
 @define(slots=True, frozen=True)
@@ -85,7 +84,7 @@ class OAuth2Token:
             "client_secret": config.client_secret,
         }
 
-        response = httpx.post(TOKEN_URL, data=data, headers=headers)
+        response = httpx.post(str(TOKEN_URL), data=data, headers=headers)
         response.raise_for_status()
 
         new_token = OAuth2Token(**response.json())
