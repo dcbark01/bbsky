@@ -3,7 +3,7 @@ import os
 from enum import Enum
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 import click
 from attrs import define, evolve
@@ -12,11 +12,19 @@ from .data_cls import URL, structure, unstructure
 from .paths import BBSKY_CONFIG_DIR, BBSKY_CONFIG_FILE
 
 
+class SkyConfigError(Exception):
+    pass
+
+
 class SkyConfigEnvVars(Enum):
     CLIENT_ID = "BLACKBAUD_CLIENT_ID"
     CLIENT_SECRET = "BLACKBAUD_CLIENT_SECRET"
     REDIRECT_URI = "BLACKBAUD_REDIRECT_URI"
     SUBSCRIPTION_KEY = "BLACKBAUD_SUBSCRIPTION_KEY"
+
+    @staticmethod
+    def are_all_env_vars_set() -> bool:
+        return all([os.getenv(var.value) for var in SkyConfigEnvVars])
 
 
 def ensure_config_dir(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -34,11 +42,6 @@ def ensure_config_dir(func: Callable[..., Any]) -> Callable[..., Any]:
 class SkyConfig:
     """
     Blackbaud app authentication credentials
-
-    Loading Priority:
-
-    1. Environment variables
-    2. JSON file (default: ~/.bbsky/config/config.json)
 
     See this URL for helpful troubleshooting tips:
     https://developer.blackbaud.com/skyapi/docs/authorization/common-auth-issues
@@ -82,6 +85,25 @@ class SkyConfig:
 
     def to_json_file(self, path: Path) -> None:
         Path(path).write_text(json.dumps(self.to_dict(), indent=4))
+
+    @classmethod
+    def load(cls, input_file: Optional[Path] = None):
+        f"""
+        Loading Priority:
+
+        1. Provided JSON file path
+        2. Environment variables
+        3. JSON file (default: {BBSKY_CONFIG_FILE})
+
+        """
+        if input_file:
+            return cls.from_json_file(input_file)
+        elif SkyConfigEnvVars.are_all_env_vars_set():
+            return cls.from_env()
+        elif BBSKY_CONFIG_FILE.exists():
+            return cls.from_stored_config()
+        else:
+            raise SkyConfigError("No config found. Please provide a file path or set environment variables.")
 
 
 @click.group()

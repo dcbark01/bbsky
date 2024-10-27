@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 
-from bbsky.config import SkyConfig
+from bbsky.config import SkyConfig, SkyConfigError
 from bbsky.data_cls import URL
 
 
@@ -118,3 +118,52 @@ def test_stored_config_invalid_json(tmp_path: Path, monkeypatch: MonkeyPatch) ->
     monkeypatch.setattr("bbsky.config.BBSKY_CONFIG_FILE", invalid_json_file)
     with pytest.raises(json.JSONDecodeError):
         SkyConfig.from_stored_config()
+
+
+def load_config_from_provided_file(tmp_path: Path, valid_credentials_dict: dict[str, str]) -> None:
+    json_file = tmp_path / "credentials.json"
+    json_file.write_text(json.dumps(valid_credentials_dict))
+
+    config = SkyConfig.load(input_file=json_file)
+    assert config.client_id == valid_credentials_dict["client_id"]
+    assert config.client_secret == valid_credentials_dict["client_secret"]
+    assert config.redirect_uri == URL(valid_credentials_dict["redirect_uri"])
+    assert config.subscription_key == valid_credentials_dict["subscription_key"]
+
+
+def load_config_from_env(monkeypatch: MonkeyPatch, valid_credentials_dict: dict[str, str]) -> None:
+    monkeypatch.setenv("BLACKBAUD_CLIENT_ID", valid_credentials_dict["client_id"])
+    monkeypatch.setenv("BLACKBAUD_CLIENT_SECRET", valid_credentials_dict["client_secret"])
+    monkeypatch.setenv("BLACKBAUD_REDIRECT_URI", valid_credentials_dict["redirect_uri"])
+    monkeypatch.setenv("BLACKBAUD_SUBSCRIPTION_KEY", valid_credentials_dict["subscription_key"])
+
+    config = SkyConfig.load()
+    assert config.client_id == valid_credentials_dict["client_id"]
+    assert config.client_secret == valid_credentials_dict["client_secret"]
+    assert config.redirect_uri == URL(valid_credentials_dict["redirect_uri"])
+    assert config.subscription_key == valid_credentials_dict["subscription_key"]
+
+
+def load_config_from_stored_file(
+    tmp_path: Path, monkeypatch: MonkeyPatch, valid_credentials_dict: dict[str, str]
+) -> None:
+    json_file = tmp_path / "credentials.json"
+    json_file.write_text(json.dumps(valid_credentials_dict))
+    monkeypatch.setattr("bbsky.config.BBSKY_CONFIG_FILE", json_file)
+
+    config = SkyConfig.load()
+    assert config.client_id == valid_credentials_dict["client_id"]
+    assert config.client_secret == valid_credentials_dict["client_secret"]
+    assert config.redirect_uri == URL(valid_credentials_dict["redirect_uri"])
+    assert config.subscription_key == valid_credentials_dict["subscription_key"]
+
+
+def load_config_no_sources(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.delenv("BLACKBAUD_CLIENT_ID", raising=False)
+    monkeypatch.delenv("BLACKBAUD_CLIENT_SECRET", raising=False)
+    monkeypatch.delenv("BLACKBAUD_REDIRECT_URI", raising=False)
+    monkeypatch.delenv("BLACKBAUD_SUBSCRIPTION_KEY", raising=False)
+    monkeypatch.setattr("bbsky.config.BBSKY_CONFIG_FILE", Path("non_existent_file.json"))
+
+    with pytest.raises(SkyConfigError):
+        SkyConfig.load()
