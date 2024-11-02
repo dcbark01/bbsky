@@ -1,4 +1,3 @@
-import logging
 from collections import OrderedDict
 from typing import Any, ClassVar, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Union
 
@@ -6,6 +5,7 @@ import httpx
 from attrs import asdict, define, field
 from httpx import QueryParams
 
+from bbsky import logger
 from bbsky.cache import Cache, DiskCache
 from bbsky.config import SkyConfig
 from bbsky.constants import API_BASE_URL
@@ -13,9 +13,6 @@ from bbsky.data_cls import URL
 from bbsky.digest import Digest
 from bbsky.paths import BBSKY_CACHE_DIR
 from bbsky.token import OAuth2Token
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 # From httpx/_types.py
 PrimitiveData = Optional[Union[str, int, float, bool]]
@@ -121,15 +118,15 @@ class HTTPSyncClient:
         cache_key = create_cache_key_from_request(request)
         cached_json_data = self.cache.get(cache_key)
         if cached_json_data:
-            print(f"Returning cached response for {request.url}")
+            logger.log(f"Returning cached response for {request.url}")
             return cached_json_data
         else:
-            print(f"Sending request to {request.url}")
+            logger.info(f"Sending request to {request.url}")
             with self.client as client:
                 response = client.send(request)
             json_data = response.json()
             self.cache.set(cache_key, json_data)
-            print(f"Set cache entry for key: {cache_key}")
+            logger.info(f"Set cache entry for key: {cache_key}")
             return json_data
 
     def close(self):
