@@ -4,7 +4,7 @@ lint = "rye lint --fix"
 deps = "fawltydeps --check"
 check = "pyright"
 test = "rye test"
-all = { chain = ["fmt", "lint", "check", "test"] }
+all = { chain = ["fmt", "lint", "check", "deps", "test"] }
 
 [project]
 name = "bbsky"
@@ -21,7 +21,6 @@ dependencies = [
     "httpx~=0.27.2",
     "click~=8.1.7",
     "pendulum~=3.0.0",
-    "pyright~=1.1.385",
     "redis~=5.1.1",
 ]
 readme = "README.md"
@@ -37,7 +36,7 @@ build-backend = "pdm.backend"
 [tool.rye]
 managed = true
 dev-dependencies = [
-    "pyright~=1.1.384",
+    "pyright~=1.1.387",
     "pytest~=8.3.3",
     "pre-commit~=4.0.1",
     "fawltydeps~=0.17.0",
@@ -74,4 +73,6 @@ ignore = ["tests/"]
 pythonVersion = "3.10"
 
 [tool.fawltydeps]
-code = "src"
+code = [
+    "src",
+]
