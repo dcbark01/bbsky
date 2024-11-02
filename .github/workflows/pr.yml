@@ -1,0 +1,44 @@
+name: pr
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+concurrency:
+  group: pr-${{ github.event.number }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      python: ${{ steps.filter.outputs.python }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            python:
+            - '**/*.py'
+            - 'pyproject.toml'
+
+  test-python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        py: ['3.10', '3.11', '3.12']
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: eifinger/setup-rye@v3
+        id: setup-rye
+        with:
+          version: '0.34.0'
+      - run: rye pin ${{ matrix.py }}
+      - name: Sync
+        run: |
+          rye sync
+      - run: rye run test
