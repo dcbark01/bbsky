@@ -8,7 +8,7 @@ all = { chain = ["fmt", "lint", "check", "deps", "test"] }
 
 [project]
 name = "bbsky"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Client for Blackbaud Sky API"
 authors = [
     { name = "dcbark01", email = "dcbark01@gmail.com" }
@@ -32,6 +32,9 @@ bbsky = "bbsky.cli:main"
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
+
+[tool.pdm.version]
+source = "scm"
 
 [tool.rye]
 managed = true
