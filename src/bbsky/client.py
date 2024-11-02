@@ -12,7 +12,7 @@ from bbsky.constants import API_BASE_URL
 from bbsky.data_cls import URL
 from bbsky.digest import Digest
 from bbsky.paths import BBSKY_CACHE_DIR
-from bbsky.tokens import OAuth2Token
+from bbsky.token import OAuth2Token
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)

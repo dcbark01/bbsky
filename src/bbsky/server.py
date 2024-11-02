@@ -25,7 +25,7 @@ from bbsky.config import SkyConfig
 from bbsky.constants import TOKEN_URL
 from bbsky.data_cls import URL
 from bbsky.paths import BBSKY_TOKEN_FILE
-from bbsky.tokens import OAuth2Token
+from bbsky.token import OAuth2Token
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)

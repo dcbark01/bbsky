@@ -7,7 +7,7 @@ import pytest
 from _pytest.monkeypatch import MonkeyPatch
 
 from bbsky.config import SkyConfig
-from bbsky.tokens import OAuth2Token
+from bbsky.token import OAuth2Token
 
 
 @pytest.fixture
@@ -67,14 +67,14 @@ def test_token_save_load(tmp_path: Path, valid_token: OAuth2Token):
 def test_token_from_cache(monkeypatch: MonkeyPatch, tmp_path: Path, valid_token: OAuth2Token):
     token_file = tmp_path / "token.json"
     valid_token.save(token_file)
-    monkeypatch.setattr("bbsky.tokens.BBSKY_TOKEN_FILE", token_file)
+    monkeypatch.setattr("bbsky.token.BBSKY_TOKEN_FILE", token_file)
     cached_token = OAuth2Token.from_cache()
     assert cached_token == valid_token
 
 
 def test_token_save_to_cache(monkeypatch: MonkeyPatch, tmp_path: Path, valid_token: OAuth2Token):
     token_file = tmp_path / "token.json"
-    monkeypatch.setattr("bbsky.tokens.BBSKY_TOKEN_FILE", token_file)
+    monkeypatch.setattr("bbsky.token.BBSKY_TOKEN_FILE", token_file)
     valid_token.to_cache()
     assert token_file.exists()
     cached_token = OAuth2Token.load(token_file)

@@ -5,7 +5,7 @@ import pytest
 
 from bbsky.config import SkyConfig
 from bbsky.sessions import SyncSessionManager, SyncUserSession, User
-from bbsky.tokens import OAuth2Token
+from bbsky.token import OAuth2Token
 
 
 @pytest.fixture

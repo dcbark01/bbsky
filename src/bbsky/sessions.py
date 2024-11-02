@@ -7,7 +7,7 @@ from httpx import QueryParams
 
 from bbsky.config import SkyConfig
 from bbsky.constants import API_BASE_URL
-from bbsky.tokens import OAuth2Token
+from bbsky.token import OAuth2Token
 
 # From httpx/_types.py
 PrimitiveData = Optional[Union[str, int, float, bool]]
