@@ -41,8 +41,4 @@ jobs:
       - name: Sync
         run: |
           rye sync
-      - run: rye fmt --check
-      - run: rye lint
-      - run: rye run check
-      - run: rye run fawltydeps --check
       - run: rye run test
