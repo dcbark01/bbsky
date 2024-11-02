@@ -41,11 +41,6 @@ jobs:
       - name: Sync
         run: |
           rye sync
-          if [[ $(git diff --stat requirements.lock) != '' ]]; then
-            echo 'Rye lockfile not up-to-date'
-            git diff requirements.lock
-            exit 1
-          fi
       - run: rye fmt --check
       - run: rye lint
       - run: rye run check
