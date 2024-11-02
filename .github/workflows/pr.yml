@@ -37,7 +37,7 @@ jobs:
         id: setup-rye
         with:
           version: '0.34.0'
-      - run: rye pin $
+      - run: rye pin python ${{ matrix.py }}
       - name: Sync
         run: |
           rye sync
