@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from bbsky.cache import RedisCache, UsageError
+from bbsky.cache import CacheError, RedisCache
 
 
 @pytest.fixture
@@ -50,7 +50,7 @@ def test_clear_allowed(mock_redis):
 
 
 def test_clear_not_allowed(cache):
-    with pytest.raises(UsageError):
+    with pytest.raises(CacheError):
         cache.clear()
 
 

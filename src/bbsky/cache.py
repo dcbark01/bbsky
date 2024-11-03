@@ -1,20 +1,21 @@
 import hashlib
 import json
-import logging
 from abc import abstractmethod
 from pathlib import Path
 from typing import Dict, Hashable, Optional, Protocol, TypeVar, Union
 
 import redis
-from click import UsageError
 
 from bbsky.data_cls import TZ, DateTime, Duration
-
-logger = logging.getLogger(__name__)
+from bbsky.logging_utils import logger
 
 K_contra = TypeVar("K_contra", contravariant=True)
 KH = TypeVar("KH", bound=Hashable)
 V = TypeVar("V")
+
+
+class CacheError(Exception):
+    pass
 
 
 class Cache(Protocol[K_contra, V]):
@@ -194,6 +195,6 @@ class RedisCache(Cache[KH, V]):
 
     def clear(self) -> None:
         if not self.allow_clearing:
-            raise UsageError("Clearing the cache is not allowed for this instance of RedisCache")
+            raise CacheError("Clearing the cache is not allowed for this instance of RedisCache")
         self.client.flushdb()  # type: ignore
         logger.info("Cleared Redis cache")

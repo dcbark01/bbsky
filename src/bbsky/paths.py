@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-import click
+import typer
 
 
 def getenv_path(key: str, default: Path) -> Path:
@@ -16,11 +16,14 @@ BBSKY_CONFIG_FILE = BBSKY_CONFIG_DIR / "config.json"
 BBSKY_TOKEN_FILE = BBSKY_CACHE_DIR / "token.json"
 
 
-@click.command()
-def main():
+cli = typer.Typer(help="Display the default paths used by bbsky.")
+
+
+@cli.command()
+def show() -> None:
     """Display the default paths used by bbsky."""
-    click.echo(f"BBSKY_HOME_DIR: {BBSKY_HOME_DIR}")
-    click.echo(f"BBSKY_CONFIG_DIR: {BBSKY_CONFIG_DIR}")
-    click.echo(f"BBSKY_CACHE_DIR: {BBSKY_CACHE_DIR}")
-    click.echo(f"BBSKY_CONFIG_FILE: {BBSKY_CONFIG_FILE}")
-    click.echo(f"BBSKY_TOKEN_FILE: {BBSKY_TOKEN_FILE}")
+    typer.echo(f"BBSKY_HOME_DIR: {BBSKY_HOME_DIR}")
+    typer.echo(f"BBSKY_CONFIG_DIR: {BBSKY_CONFIG_DIR}")
+    typer.echo(f"BBSKY_CACHE_DIR: {BBSKY_CACHE_DIR}")
+    typer.echo(f"BBSKY_CONFIG_FILE: {BBSKY_CONFIG_FILE}")
+    typer.echo(f"BBSKY_TOKEN_FILE: {BBSKY_TOKEN_FILE}")

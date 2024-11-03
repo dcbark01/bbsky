@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
 
-import click
 import httpx
+import typer
 from bottle import (  # type: ignore
     LocalRequest,
     Response,
@@ -24,7 +24,7 @@ from bottle import (  # type: ignore
 from bbsky.config import SkyConfig
 from bbsky.constants import TOKEN_URL
 from bbsky.data_cls import URL
-from bbsky.paths import BBSKY_TOKEN_FILE
+from bbsky.paths import BBSKY_CONFIG_FILE, BBSKY_TOKEN_FILE
 from bbsky.token import OAuth2Token
 
 logger = logging.getLogger(__name__)
@@ -34,10 +34,42 @@ request: LocalRequest
 
 auth_code: str | None = None
 oauth_token: OAuth2Token | None = None
+config: SkyConfig | None = None
 
 
-# TODO: Make configurable
-config = SkyConfig.from_stored_config()
+def set_config_from_saved() -> None:
+    if not BBSKY_CONFIG_FILE.exists():
+        raise ValueError("No saved config found. Please set the config using the set_config function.")
+
+    global config
+    config = SkyConfig.from_stored_config()
+
+
+def set_config_from_kwargs(
+    *, client_id: str, client_secret: str, redirect_uri: str | URL, subscription_key: str
+) -> None:
+    global config
+    redirect_uri = URL(redirect_uri) if isinstance(redirect_uri, str) else redirect_uri
+    config = SkyConfig(
+        client_id=client_id, client_secret=client_secret, redirect_uri=redirect_uri, subscription_key=subscription_key
+    )
+
+
+def set_config(
+    client_id: str | None = None,
+    client_secret: str | None = None,
+    redirect_uri: str | URL | None = None,
+    subscription_key: str | None = None,
+) -> None:
+    if client_id and client_secret and redirect_uri and subscription_key:
+        set_config_from_kwargs(
+            client_id=client_id,
+            client_secret=client_secret,
+            redirect_uri=redirect_uri,
+            subscription_key=subscription_key,
+        )
+    else:
+        set_config_from_saved()
 
 
 class Scope(enum.Enum):
@@ -123,6 +155,9 @@ def submit():
 
 @route("/login")
 def login_to_blackbaud() -> Response:
+    if not config:
+        raise ValueError("No config found. Please set the config using the set_config function.")
+
     state = get_random_state()
     scope = " ".join([Scope.offline_access.value])
     resp = redirect_to_blackbaud(
@@ -142,6 +177,9 @@ def callback_from_blackbaud() -> Response:
     global auth_code
     auth_code = request.GET.get("code")  # type: ignore
     state_echoed = request.GET.get("state")  # type: ignore
+
+    if not config:
+        raise ValueError("No config found. Please set the config using the set_config function.")
 
     if not auth_code:
         return Response("Authorization code not found in the request.", status=400)
@@ -189,55 +227,61 @@ def start_server(host: str, port: int) -> threading.Thread:
     server_thread = threading.Thread(target=run_server, args=(host, port))
     server_thread.daemon = True
     server_thread.start()
-    click.echo(f"Server started on http://{host}:{port}")
+    typer.echo(f"Server started on http://{host}:{port}")
     return server_thread
 
 
 def stop_server(signum: int, frame: Any) -> None:
-    click.echo("\nServer stopped.")
+    typer.echo("\nServer stopped.")
     sys.exit(0)
 
 
-@click.group()
-def cli():
-    """CLI for Blackbaud OAuth2 server."""
-    pass
+cli = typer.Typer(help="Create and manage Blackbaud Sky API config.")
 
 
-@click.command()
-@click.option("--host", default="localhost", help="Host to bind the server to")
-@click.option("--port", default=5000, type=int, help="Port to bind the server to")
-@click.option(
-    "--token-file", default=BBSKY_TOKEN_FILE, type=str, help="Output filepath to save the token (must be .json)"
-)
-@click.pass_context
-def start(ctx: click.Context, host: str, port: int, token_file: Path) -> None:
+@cli.command()
+def start(
+    host: str = "localhost",
+    port: int = 5000,
+    token_file: Path = BBSKY_TOKEN_FILE,
+    client_id: str = "",
+    client_secret: str = "",
+    redirect_uri: str = "",
+    subscription_key: str = "",
+) -> None:
     """
     Start the server to listen for OAuth callbacks.
     """
+
+    # Validate the token file output path
     token_file = Path(token_file)
     if token_file.suffix != ".json":
         raise ValueError("Token file must be a .json file")
+
+    # Set the config
+    set_config(
+        client_id=client_id, client_secret=client_secret, redirect_uri=redirect_uri, subscription_key=subscription_key
+    )
 
     signal.signal(signal.SIGINT, stop_server)
 
     start_server(host, port)
 
-    click.echo("Waiting for OAuth callback. Press CTRL+C to stop the server.")
+    typer.echo("Waiting for OAuth callback. Press CTRL+C to stop the server.")
 
     try:
         while True:
             if auth_code and oauth_token:
-                click.echo(f"Received authorization code: {auth_code}")
+                typer.echo(f"Received authorization code: {auth_code}")
 
                 # Ask if the user wants to save the token
-                save_token = click.confirm("Do you want to save the token?")
+                save_token = typer.confirm("Do you want to save the token?")
                 if not save_token:
                     break
 
                 # If it exists already, confirm overwrite
                 if save_token and token_file.exists():
-                    overwrite = click.confirm(f"Token file already exists at {token_file}. Overwrite?")
+                    overwrite = typer.confirm(f"Token file already exists at {token_file}. Overwrite?")
                     if not overwrite:
                         save_token = False
 
@@ -247,7 +291,7 @@ def start(ctx: click.Context, host: str, port: int, token_file: Path) -> None:
 
                     # Save the token
                     oauth_token.save(token_file)
-                    click.echo(f"Token saved to {token_file}")
+                    typer.echo(f"Token saved to {token_file}")
 
                 break
 
@@ -255,6 +299,3 @@ def start(ctx: click.Context, host: str, port: int, token_file: Path) -> None:
         pass
 
     sys.exit(0)
-
-
-cli.add_command(start)

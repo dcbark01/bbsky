@@ -4,8 +4,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
-import click
 import httpx
+import typer
 from attrs import asdict, define
 
 from bbsky.config import SkyConfig
@@ -92,50 +92,50 @@ class OAuth2Token:
         return new_token
 
 
-@click.group()
-def cli():
-    """CLI for Blackbaud token management."""
-    pass
+cli = typer.Typer(help="Manage Blackbaud Sky API tokens.")
 
 
-@click.command()
-@click.option("-t", "--token-file", default=BBSKY_TOKEN_FILE, type=click.Path())
-def show(token_file: Path) -> None:
+@cli.command()
+def show(
+    token_file: Path = typer.Option(BBSKY_TOKEN_FILE, "-t", "--token-file", help="Input token file path"),
+) -> None:
     """Show the current token."""
 
     # Check if the token file exists
     if not token_file.exists():
-        click.echo("No token found.")
+        typer.echo("No token found.")
         return
 
     token = OAuth2Token.load(token_file)
-    click.echo(f"Token for {token.email}: {str(token)}")
+    typer.echo(f"Token for {token.email}: {str(token)}")
 
 
-@click.command()
-@click.option("-t", "--token-file", default=BBSKY_TOKEN_FILE, type=click.Path())
-def purge(token_file: Path) -> None:
+@cli.command()
+def purge(
+    token_file: Path = typer.Option(BBSKY_TOKEN_FILE, "-t", "--token-file", help="Input token file path"),
+) -> None:
     """Purge the current token."""
 
     # Check if the token file exists
     if not token_file.exists():
-        click.echo("No token found.")
+        typer.echo("No token found.")
         return
 
     # Confirm with the user
     token = OAuth2Token.load(token_file)
-    click.echo(f"Current token: {str(token)}")
+    typer.echo(f"Current token: {str(token)}")
 
-    if click.confirm("Are you sure you want to purge the current token?"):
+    if typer.confirm("Are you sure you want to purge the current token?"):
         token_file.unlink()
-        click.echo("Token purged.")
+        typer.echo("Token purged.")
     else:
-        click.echo("Aborted. Token not purged.")
+        typer.echo("Aborted. Token not purged.")
 
 
-@click.command()
-@click.option("-t", "--token-file", default=BBSKY_TOKEN_FILE, type=click.Path())
-def refresh(token_file: Path) -> None:
+@cli.command()
+def refresh(
+    token_file: Path = typer.Option(BBSKY_TOKEN_FILE, "-t", "--token-file", help="Input token file path"),
+) -> None:
     """Refresh the current token."""
     token = OAuth2Token.load(token_file)
     config = SkyConfig.load()
@@ -143,9 +143,4 @@ def refresh(token_file: Path) -> None:
     new_token = token.refresh(token, config)
     new_token.to_cache()
 
-    click.echo(f"Token refreshed: {str(new_token)}")
-
-
-cli.add_command(show)
-cli.add_command(purge)
-cli.add_command(refresh)
+    typer.echo(f"Token refreshed: {str(new_token)}")
