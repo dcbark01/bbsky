@@ -22,6 +22,7 @@ dependencies = [
     "click>=8.1.7",
     "pendulum>=3.0.0",
     "redis>=5.1.1",
+    "python-dateutil~=2.9.0.post0",
 ]
 readme = "README.md"
 requires-python = ">= 3.10"
@@ -43,6 +44,8 @@ dev-dependencies = [
     "pytest>=8.3.3",
     "pre-commit>=4.0.1",
     "fawltydeps>=0.17.0",
+    "black~=24.10.0",
+    "docformatter~=1.7.5",
 ]
 universal = true
 
@@ -53,6 +56,7 @@ exclude = [
     "build",
     "dist",
     ".venv",
+    "src/bbsky/crm_constituent_client"
 ]
 
 [tool.ruff.lint]
@@ -72,7 +76,11 @@ known-first-party = ["bbsky"]
 venvPath = "."
 venv = ".venv"
 strict = ["**/*.py"]
-ignore = ["tests/"]
+ignore = [
+    "tests/",
+    "src/bbsky/crm_constituent_client/",
+    "scripts/",
+]
 pythonVersion = "3.10"
 
 [tool.fawltydeps]

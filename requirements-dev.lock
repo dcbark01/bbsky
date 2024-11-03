@@ -17,6 +17,7 @@ anyio==4.6.0
 attrs==24.2.0
     # via bbsky
     # via cattrs
+black==24.10.0
 bottle==0.13.1
     # via bbsky
 cattrs==24.1.2
@@ -26,13 +27,17 @@ certifi==2024.8.30
     # via httpx
 cfgv==3.4.0
     # via pre-commit
+charset-normalizer==3.4.0
+    # via docformatter
 click==8.1.7
     # via bbsky
+    # via black
 colorama==0.4.6 ; sys_platform == 'win32' or platform_system == 'Windows'
     # via click
     # via pytest
 distlib==0.3.9
     # via virtualenv
+docformatter==1.7.5
 fawltydeps==0.17.0
 filelock==3.16.1
     # via virtualenv
@@ -56,18 +61,24 @@ isort==5.13.2
     # via fawltydeps
 multidict==6.1.0
     # via yarl
+mypy-extensions==1.0.0
+    # via black
 nodeenv==1.9.1
     # via pre-commit
     # via pyright
 packaging==24.1
+    # via black
     # via fawltydeps
     # via pip-requirements-parser
     # via pytest
+pathspec==0.12.1
+    # via black
 pendulum==3.0.0
     # via bbsky
 pip-requirements-parser==32.0.1
     # via fawltydeps
 platformdirs==4.3.6
+    # via black
     # via virtualenv
 pluggy==1.5.0
     # via pytest
@@ -83,6 +94,7 @@ pyparsing==3.2.0
 pyright==1.1.387
 pytest==8.3.3
 python-dateutil==2.9.0.post0
+    # via bbsky
     # via pendulum
     # via time-machine
 pyyaml==6.0.2
@@ -102,6 +114,8 @@ typing-extensions==4.12.2
     # via pyright
 tzdata==2024.2
     # via pendulum
+untokenize==0.1.1
+    # via docformatter
 virtualenv==20.26.6
     # via pre-commit
 yarl==1.14.0
