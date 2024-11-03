@@ -1,9 +1,10 @@
 import importlib
-import logging
 from typing import Optional
 
 import typer
 from typer import Typer
+
+from bbsky.logging_utils import setup_logger
 
 
 def get_command_app(command_name: str) -> Optional[Typer]:
@@ -47,10 +48,7 @@ for cmd in COMMANDS:
 
 def init_logging():
     """Initialize logging configuration."""
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s",
-    )
+    setup_logger(name=__name__)
 
 
 def main():
