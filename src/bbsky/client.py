@@ -118,7 +118,7 @@ class HTTPSyncClient:
         cache_key = create_cache_key_from_request(request)
         cached_json_data = self.cache.get(cache_key)
         if cached_json_data:
-            logger.log(f"Returning cached response for {request.url}")
+            logger.info(f"Returning cached response for {request.url}")
             return cached_json_data
         else:
             logger.info(f"Sending request to {request.url}")

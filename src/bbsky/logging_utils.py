@@ -40,7 +40,7 @@ def setup_logger(name: str = "bbsky", level: Optional[int] = None) -> logging.Lo
         console_handler.setLevel(level=level)
 
         formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+            "%(asctime)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
         )
 
         console_handler.setFormatter(formatter)
