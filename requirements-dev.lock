@@ -43,10 +43,13 @@ filelock==3.16.1
     # via virtualenv
 h11==0.14.0
     # via httpcore
+hishel==0.1.1
+    # via bbsky
 httpcore==1.0.6
     # via httpx
 httpx==0.27.2
     # via bbsky
+    # via hishel
 identify==2.6.1
     # via pre-commit
 idna==3.10

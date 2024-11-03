@@ -23,6 +23,7 @@ dependencies = [
     "redis>=5.1.1",
     "python-dateutil>=2.9.0.post0",
     "typer>=0.12.5",
+    "hishel>=0.1.1",
 ]
 readme = "README.md"
 requires-python = ">= 3.10"

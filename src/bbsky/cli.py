@@ -37,6 +37,7 @@ COMMANDS = [
     "config",
     "token",
     "paths",
+    "client",
 ]
 
 # Dynamically add all subcommands
