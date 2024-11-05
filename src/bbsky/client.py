@@ -1,9 +1,9 @@
 from enum import Enum
 
-import hishel
 import httpx
 from attrs import define, field
 
+from bbsky.cache import setup_transport
 from bbsky.config import SkyConfig
 from bbsky.constants import API_BASE_URL
 from bbsky.crm_constituent_client.client import AuthenticatedClient
@@ -35,7 +35,6 @@ class SkyClient(AuthenticatedClient):
 
     oauth_token: OAuth2Token = field(factory=OAuth2Token.from_cache)
     config: SkyConfig = field(factory=SkyConfig.from_stored_config)
-    cache_client: hishel.CacheClient = hishel.CacheClient()
     token = field(default=None)
 
     def __attrs_post_init__(self) -> None:
@@ -53,6 +52,7 @@ class SkyClient(AuthenticatedClient):
                 timeout=self._timeout,
                 verify=self._verify_ssl,
                 follow_redirects=self._follow_redirects,
+                transport=setup_transport(),
                 **self._httpx_args,
             )
         return self._client

@@ -15,6 +15,8 @@ anyio==4.6.0
 attrs==24.2.0
     # via bbsky
     # via cattrs
+blake3==0.4.1
+    # via bbsky
 bottle==0.13.1
     # via bbsky
 cattrs==24.1.2
@@ -55,8 +57,6 @@ python-dateutil==2.9.0.post0
     # via bbsky
     # via pendulum
     # via time-machine
-redis==5.1.1
-    # via bbsky
 rich==13.9.4
     # via typer
 shellingham==1.5.4
