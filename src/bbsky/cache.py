@@ -27,10 +27,20 @@ def normalized_url(url: Union[httpcore.URL, str, bytes]) -> str:
     return f'{url.scheme.decode("ascii")}://{url.host.decode("ascii")}{port}{url.target.decode("ascii")}'
 
 
+def get_header(key: bytes, headers: Sequence[tuple[bytes, bytes]]) -> bytes:
+    for header, value in headers:
+        if header == key:
+            return value
+    return b""
+
+
 def generate_key(request: httpcore.Request, body: bytes = b"") -> str:
     encoded_url = normalized_url(request.url).encode("ascii")
 
-    key_parts = [request.method, encoded_url, body]
+    user_token = get_header(b"Authorization", request.headers)
+    team_slug = get_header(b"X-Team-Slug", request.headers)
+    subscription_key = get_header(b"Bb-Api-Subscription-Key", request.headers)
+    key_parts = [request.method, encoded_url, body, user_token, subscription_key, team_slug]
 
     key = blake3()
     for part in key_parts:
