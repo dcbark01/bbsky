@@ -1,41 +1,62 @@
 import importlib
-import logging
 from typing import Optional
 
-from click import Command, Context, MultiCommand, UsageError, command
+import typer
+from typer import Typer
+
+from bbsky.logging_utils import setup_logger
 
 
-class CLI(MultiCommand):
-    # Update as needed
-    COMMANDS = [
-        "server",
-        "config",
-        "token",
-        "paths",
-    ]
-
-    def list_commands(self, ctx: Context) -> list[str]:
-        return self.COMMANDS
-
-    def get_command(self, ctx: Context, cmd_name: str) -> Optional[Command]:
-        if cmd_name not in self.COMMANDS:
-            raise UsageError(f"Unknown command: {cmd_name}. Available commands: {', '.join(self.COMMANDS)}")
-        module = importlib.import_module(f"bbsky.{cmd_name}")
-        if hasattr(module, "cli"):
+def get_command_app(command_name: str) -> Optional[Typer]:
+    """Dynamically import and return a Typer app for a given command."""
+    try:
+        module = importlib.import_module(f"bbsky.{command_name}")
+        if hasattr(module, "app"):
+            return module.app
+        elif hasattr(module, "cli"):
             return module.cli
         elif hasattr(module, "main"):
-            return module.main
-        raise ImportError(f"Module {cmd_name} does not have a cli or main function")
+            # If only main exists, create a new Typer app and add the main function
+            new_app = Typer()
+            new_app.command()(module.main)
+            return new_app
+        raise ImportError(f"Module {command_name} does not have app, cli, or main function")
+    except ImportError as e:
+        typer.echo(f"Error loading command {command_name}: {str(e)}", err=True)
+        return None
 
 
-@command(cls=CLI)
-def main() -> None:
-    """Command line interface for bbsky."""
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s",
-    )
+app = Typer(
+    help="Command line interface for bbsky.",
+    no_args_is_help=True,
+)
+
+# Define available commands
+COMMANDS = [
+    "server",
+    "config",
+    "token",
+    "paths",
+    "apis",
+]
+
+# Dynamically add all subcommands
+for cmd in COMMANDS:
+    cmd_app = get_command_app(cmd)
+    if cmd_app:
+        app.add_typer(cmd_app, name=cmd)
 
 
-if __name__ == """__main__""":
+def init_logging():
+    """Initialize logging configuration."""
+    setup_logger(name=__name__)
+
+
+def main():
+    """Main entry point for the CLI."""
+    init_logging()
+    app()
+
+
+if __name__ == "__main__":
     main()

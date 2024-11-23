@@ -5,7 +5,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-import click
+import typer
 from attrs import define, evolve
 
 from .data_cls import URL, structure, unstructure
@@ -106,50 +106,39 @@ class SkyConfig:
             raise SkyConfigError("No config found. Please provide a file path or set environment variables.")
 
 
-@click.group()
-def cli():
-    """Create and manage Blackbaud Sky API config."""
-    pass
+cli = typer.Typer(help="Create and manage Blackbaud Sky API config.")
 
 
-@click.command()
-@click.option("--client-id", prompt="Client ID")
-@click.option("--client-secret", prompt="Client Secret")
-@click.option("--redirect-uri", prompt="Redirect URI")
-@click.option("--subscription-key", prompt="Subscription Key")
-@click.option("--output-path", type=click.Path(), default=BBSKY_CONFIG_FILE)
-@click.pass_context
-@ensure_config_dir
+@cli.command()
 def create(
-    context: click.Context,
-    client_id: str,
-    client_secret: str,
-    redirect_uri: str,
-    subscription_key: str,
-    output_path: Path,
+    client_id: str = typer.Option(..., prompt=True, help="Client ID"),
+    client_secret: str = typer.Option(..., prompt=True, help="Client Secret"),
+    redirect_uri: str = typer.Option(..., prompt=True, help="Redirect URI"),
+    subscription_key: str = typer.Option(..., prompt=True, help="Subscription Key"),
+    output_path: Path = typer.Option(BBSKY_CONFIG_FILE, help="Output path for config file"),
 ) -> None:
     """Create a new Blackbaud Sky API config."""
-    output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Check if the file already exists, and prompt the user to overwrite it
+    if output_path.exists():
+        if not typer.confirm(f"Config file already exists at {output_path}. Overwrite?"):
+            typer.echo("Aborted.")
+            return
 
     config = SkyConfig(client_id, client_secret, URL(redirect_uri), subscription_key)
     config.to_json_file(output_path)
-    click.echo(f"Config saved to {output_path}")
+    typer.echo(f"Config saved to {output_path}")
 
 
-@click.command()
-@click.option("-i", "--input_path", type=click.Path(), default=BBSKY_CONFIG_FILE)
-@click.option("-f", "--fmt", type=click.Choice(["json", "env"]), default="json")
-@click.pass_context
+@cli.command()
 def show(
-    context: click.Context,
-    input_path: Path,
-    fmt: str,
+    input_path: Path = typer.Option(BBSKY_CONFIG_FILE, "-i", "--input-path", help="Input config file path"),
+    fmt: str = typer.Option("json", "-f", "--fmt", help="Output format", show_choices=True),
 ) -> None:
     """Show the current Blackbaud Sky API config."""
-    input_path = Path(input_path)
     if not input_path.exists():
-        click.echo(f"Config not found at {input_path}.")
+        typer.echo(f"Config not found at {input_path}.")
         return
     config = SkyConfig.from_json_file(input_path)
     _show(config, fmt)
@@ -164,34 +153,27 @@ def _show(config: SkyConfig, fmt: str) -> None:
 
     """
     if fmt == "json":
-        click.echo(json.dumps(config.to_dict(), indent=4))
+        typer.echo(json.dumps(config.to_dict(), indent=4))
     elif fmt == "env":
-        click.echo(f"export {SkyConfigEnvVars.CLIENT_ID.value}={config.client_id}")
-        click.echo(f"export {SkyConfigEnvVars.CLIENT_SECRET.value}={config.client_secret}")
-        click.echo(f"export {SkyConfigEnvVars.REDIRECT_URI.value}={config.redirect_uri}")
-        click.echo(f"export {SkyConfigEnvVars.SUBSCRIPTION_KEY.value}={config.subscription_key}")
+        typer.echo(f"export {SkyConfigEnvVars.CLIENT_ID.value}={config.client_id}")
+        typer.echo(f"export {SkyConfigEnvVars.CLIENT_SECRET.value}={config.client_secret}")
+        typer.echo(f"export {SkyConfigEnvVars.REDIRECT_URI.value}={config.redirect_uri}")
+        typer.echo(f"export {SkyConfigEnvVars.SUBSCRIPTION_KEY.value}={config.subscription_key}")
 
 
-@click.command()
-@click.option("-i", "--input_path", type=click.Path(), default=BBSKY_CONFIG_FILE)
-@click.option("--client-id", prompt="Client ID (leave blank to keep current value)", default="")
-@click.option("--client-secret", prompt="Client Secret (leave blank to keep current value)", default="")
-@click.option("--redirect-uri", prompt="Redirect URI (leave blank to keep current value)", default="")
-@click.option("--subscription-key", prompt="Subscription Key (leave blank to keep current value)", default="")
-@click.pass_context
-@ensure_config_dir
+@cli.command()
 def update(
-    context: click.Context,
-    input_path: Path,
-    client_id: str,
-    client_secret: str,
-    redirect_uri: str,
-    subscription_key: str,
+    input_path: Path = typer.Option(BBSKY_CONFIG_FILE, "-i", "--input-path", help="Input config file path"),
+    client_id: str = typer.Option("", prompt="Client ID (leave blank to keep current value)"),
+    client_secret: str = typer.Option("", prompt="Client Secret (leave blank to keep current value)"),
+    redirect_uri: str = typer.Option("", prompt="Redirect URI (leave blank to keep current value)"),
+    subscription_key: str = typer.Option("", prompt="Subscription Key (leave blank to keep current value)"),
 ) -> None:
     """Update the current Blackbaud Sky API config."""
-
+    # Keep the existing update logic, but replace click.echo with typer.echo
+    # and click.confirm with typer.confirm
     if not any([client_id, client_secret, redirect_uri, subscription_key]):
-        click.echo("No new values provided. Exiting.")
+        typer.echo("No new values provided. Exiting.")
         return
 
     # Load the original config
@@ -200,7 +182,7 @@ def update(
     config_orig = SkyConfig.from_json_file(input_path)
 
     # Show the original config
-    click.echo("\nCurrent SkyConfig:")
+    typer.echo("\nCurrent SkyConfig:")
     _show(config_orig, "json")
 
     # Update with new values
@@ -215,37 +197,28 @@ def update(
     )
 
     # Show the updated config
-    click.echo("\nUpdated SkyConfig:")
+    typer.echo("\nUpdated SkyConfig:")
     _show(config_updated, "json")
 
     # Confirm user wants to save the updated config
-    if click.confirm("Save the updated config?"):
+    if typer.confirm("Save the updated config?"):
         config_updated.to_json_file(input_path)
-        click.echo(f"Config updated and saved to {input_path}")
+        typer.echo(f"Config updated and saved to {input_path}")
     else:
-        click.echo("Config not saved.")
+        typer.echo("Config not saved.")
 
 
-@click.command()
-@click.option("-i", "--input_path", type=click.Path(), default=BBSKY_CONFIG_FILE)
-@click.pass_context
+@cli.command()
 def purge(
-    context: click.Context,
-    input_path: Path,
+    input_path: Path = typer.Option(BBSKY_CONFIG_FILE, "-i", "--input-path", help="Input config file path"),
 ) -> None:
     """Delete the current Blackbaud Sky API config."""
-    input_path = Path(input_path)
-    if click.confirm(f"Are you sure you want to delete the current config '{input_path}'?"):
-        if input_path.exists():
-            input_path.unlink()
-            click.echo(f"Config deleted at {input_path}")
-        else:
-            click.echo(f"Config not found at {input_path}. Nothing to delete.")
+    if not input_path.exists():  # Check if the file exists first
+        typer.echo(f"Config not found at {input_path}. Nothing to delete.")
+        return
+
+    if typer.confirm(f"Are you sure you want to delete the current config '{input_path}'?"):
+        input_path.unlink()
+        typer.echo(f"Config deleted at {input_path}")
     else:
-        click.echo("Aborted.")
-
-
-cli.add_command(create)
-cli.add_command(show)
-cli.add_command(update)
-cli.add_command(purge)
+        typer.echo("Aborted.")

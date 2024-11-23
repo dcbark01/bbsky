@@ -17,6 +17,10 @@ anyio==4.6.0
 attrs==24.2.0
     # via bbsky
     # via cattrs
+    # via openapi-python-client
+black==24.10.0
+blake3==0.4.1
+    # via bbsky
 bottle==0.13.1
     # via bbsky
 cattrs==24.1.2
@@ -26,22 +30,31 @@ certifi==2024.8.30
     # via httpx
 cfgv==3.4.0
     # via pre-commit
+charset-normalizer==3.4.0
+    # via docformatter
 click==8.1.7
-    # via bbsky
+    # via black
+    # via typer
 colorama==0.4.6 ; sys_platform == 'win32' or platform_system == 'Windows'
     # via click
+    # via openapi-python-client
     # via pytest
 distlib==0.3.9
     # via virtualenv
+docformatter==1.7.5
 fawltydeps==0.17.0
 filelock==3.16.1
     # via virtualenv
 h11==0.14.0
     # via httpcore
+hishel==0.1.1
+    # via bbsky
 httpcore==1.0.6
     # via httpx
 httpx==0.27.2
     # via bbsky
+    # via hishel
+    # via openapi-python-client
 identify==2.6.1
     # via pre-commit
 idna==3.10
@@ -54,54 +67,94 @@ iniconfig==2.0.0
     # via pytest
 isort==5.13.2
     # via fawltydeps
+jinja2==3.1.4
+    # via openapi-python-client
+markdown-it-py==3.0.0
+    # via rich
+markupsafe==3.0.2
+    # via jinja2
+mdurl==0.1.2
+    # via markdown-it-py
 multidict==6.1.0
     # via yarl
+mypy-extensions==1.0.0
+    # via black
 nodeenv==1.9.1
     # via pre-commit
     # via pyright
+openapi-python-client==0.21.7
 packaging==24.1
+    # via black
     # via fawltydeps
     # via pip-requirements-parser
     # via pytest
+pathspec==0.12.1
+    # via black
 pendulum==3.0.0
     # via bbsky
 pip-requirements-parser==32.0.1
     # via fawltydeps
 platformdirs==4.3.6
+    # via black
     # via virtualenv
 pluggy==1.5.0
     # via pytest
 pre-commit==4.0.1
 propcache==0.2.0
     # via yarl
+pyclean==3.0.0
 pydantic==2.9.2
     # via fawltydeps
+    # via openapi-python-client
 pydantic-core==2.23.4
     # via pydantic
+pygments==2.18.0
+    # via rich
 pyparsing==3.2.0
     # via pip-requirements-parser
-pyright==1.1.387
+pyright==1.1.389
 pytest==8.3.3
 python-dateutil==2.9.0.post0
+    # via bbsky
+    # via openapi-python-client
     # via pendulum
     # via time-machine
 pyyaml==6.0.2
     # via pre-commit
-redis==5.1.1
+rich==13.9.4
     # via bbsky
+    # via typer
+ruamel-yaml==0.18.6
+    # via openapi-python-client
+ruamel-yaml-clib==0.2.12 ; python_full_version < '3.13' and platform_python_implementation == 'CPython'
+    # via ruamel-yaml
+ruff==0.7.4
+    # via openapi-python-client
+shellingham==1.5.4
+    # via openapi-python-client
+    # via typer
 six==1.16.0
     # via python-dateutil
 sniffio==1.3.1
     # via anyio
     # via httpx
+tenacity==9.0.0
+    # via bbsky
 time-machine==2.16.0 ; implementation_name != 'pypy'
     # via pendulum
+typer==0.12.5
+    # via bbsky
+    # via openapi-python-client
 typing-extensions==4.12.2
+    # via openapi-python-client
     # via pydantic
     # via pydantic-core
     # via pyright
+    # via typer
 tzdata==2024.2
     # via pendulum
+untokenize==0.1.1
+    # via docformatter
 virtualenv==20.26.6
     # via pre-commit
 yarl==1.14.0

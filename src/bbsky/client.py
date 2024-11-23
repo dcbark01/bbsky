@@ -1,182 +1,195 @@
-from collections import OrderedDict
-from typing import Any, ClassVar, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Union
+import logging
+import typing as t
+from http import HTTPStatus
+from typing import Any, Optional
 
+import hishel
 import httpx
-from attrs import asdict, define, field
-from httpx import QueryParams
+from attr import define, field
+from tenacity import retry, retry_if_result, stop_after_attempt, wait_exponential
 
-from bbsky import logger
-from bbsky.cache import Cache, DiskCache
+from bbsky.apis import api_name_to_url, sync_functions
+from bbsky.cache import setup_transport
 from bbsky.config import SkyConfig
-from bbsky.constants import API_BASE_URL
+from bbsky.crm_constituent_client.client import AuthenticatedClient
 from bbsky.data_cls import URL
-from bbsky.digest import Digest
-from bbsky.paths import BBSKY_CACHE_DIR
 from bbsky.token import OAuth2Token
 
-# From httpx/_types.py
-PrimitiveData = Optional[Union[str, int, float, bool]]
-QueryParamTypes = Union[
-    "QueryParams",
-    Mapping[str, Union[PrimitiveData, Sequence[PrimitiveData]]],
-    List[Tuple[str, PrimitiveData]],
-    Tuple[Tuple[str, PrimitiveData], ...],
-    str,
-    bytes,
-]
-RequestData = Mapping[str, Any]
-
-
-@define(frozen=True, slots=True, kw_only=True)
-class SearchConstituentsParams:
-    """
-    Search for constituents in the Blackbaud Sky API.
-
-    See docs:
-    https://developer.sky.blackbaud.com/api#api=crm-conmg&operation=SearchConstituents
-    """
-
-    id_: Optional[str] = field(default=None, alias="id")
-    lookup_id: Optional[str] = field(default=None)
-    sort_constituent_name: Optional[str] = field(default=None)
-    address: Optional[str] = field(default=None)
-    city: Optional[str] = field(default=None)
-    state: Optional[str] = field(default=None)
-    post_code: Optional[str] = field(default=None)
-    country_id: Optional[str] = field(default=None)
-    gives_anonymously: Optional[bool] = field(default=None)
-    classof: Optional[int] = field(default=None)
-    organization: Optional[bool] = field(default=None)
-    name: Optional[str] = field(default=None)
-    email_address: Optional[str] = field(default=None)
-    group: Optional[bool] = field(default=None)
-    household: Optional[bool] = field(default=None)
-    middle_name: Optional[str] = field(default=None)
-    suffixcodeid: Optional[str] = field(default=None)
-    phone: Optional[str] = field(default=None)
-    prospectmanager: Optional[str] = field(default=None)
-
-    def to_dict(self) -> MutableMapping[str, str]:
-        return OrderedDict({k: v for k, v in asdict(self).items() if v is not None})
-
-
-def create_authorized_headers(config: SkyConfig, token: OAuth2Token) -> dict[str, str]:
-    return {
-        "Bb-Api-Subscription-Key": config.subscription_key,
-        "Authorization": f"Bearer {token.access_token}",
-    }
-
-
-def create_digest_from_request(request: httpx.Request) -> Digest:
-    string = ""
-    string += f"{request.method} {request.url}\n"
-    for k, v in request.headers.items():
-        string += f"{k}: {v}\n"
-    return Digest.from_data(data=string.encode(encoding="utf-8"), algorithm="sha256")
-
-
-def create_cache_key_from_request(request: httpx.Request) -> str:
-    digest = create_digest_from_request(request)
-    return digest.sri
+logger = logging.getLogger(__name__)
 
 
 @define
-class HTTPSyncClient:
-    token: OAuth2Token
-    config: SkyConfig
-    base_url: ClassVar[URL] = API_BASE_URL
-    # cache: Cache[str, Any] = field(factory=InMemoryCache[str, Any])
-    cache: Cache[str, Any] = field(factory=lambda: DiskCache[str, Any](cache_dir=BBSKY_CACHE_DIR))
-    _client: httpx.Client = field(init=False, default=None, repr=False)
+class SkyClient(AuthenticatedClient):
+    """
+    Builder for Blackbaud Sky API `httpx.Client`.
 
-    @property
-    def client(self) -> httpx.Client:
-        if not self._client or self._client.is_closed:
-            self._client = httpx.Client(
-                base_url=str(self.base_url),
-                headers=create_authorized_headers(self.config, self.token),
+    Extends `AuthenticatedClient` to provide a flexible, builder-style interface for constructing
+    an authenticated `httpx.Client` instance.
+    """
+
+    subscription_key = field(default=None, type=str)  # type: ignore
+
+    def _add_header(self, key: str, value: str) -> None:
+        """Add a header to the request."""
+        self._headers[key] = value
+
+    def _add_required_headers(self) -> None:
+        """Add the required headers for Blackbaud Sky API authentication."""
+        if not self.token:
+            raise ValueError("User token is required to authenticate.")
+        self._add_header("Authorization", f"Bearer {self.token}")
+        self._add_header("Bb-Api-Subscription-Key", self.subscription_key)
+
+    def get_httpx_client(self) -> hishel.CacheClient | httpx.Client:
+        """
+        Override of `AuthenticatedClient.get_httpx_client`.
+
+        Constructs and returns an authenticated `httpx.Client`.
+        """
+        if not self.subscription_key:
+            raise ValueError("Subscription key is required to authenticate.")
+        if self._client is None:
+            self._add_required_headers()
+            self._client = hishel.CacheClient(
+                base_url=str(self._base_url),
+                cookies=self._cookies,
+                headers=self._headers,
+                timeout=self._timeout,
+                verify=self._verify_ssl,
+                follow_redirects=self._follow_redirects,
+                transport=setup_transport(),
             )
         return self._client
 
-    @property
-    def headers(self) -> httpx.Headers:
-        return httpx.Headers(
-            {
-                "Bb-Api-Subscription-Key": self.config.subscription_key,
-                "Authorization": f"Bearer {self.token.access_token}",
-            }
+
+class BBSky:
+    """
+    Blackbaud Sky API client interface.
+
+    Acts as a high-level interface to the Blackbaud Sky API,
+    providing access to all available API functions.
+
+    Since the API function implementations are generated using
+    https://github.com/openapi-generators/openapi-python-client,
+    a lot of these we haven't tried and/or do not have test cases for.
+    YMMV when trying to use them.
+
+    ---
+
+    Example usage:
+
+    sky = BBSky()
+    results = sky.search_constituents(constituent_quick_find="Smith", limit=5)
+    print(results)
+    """
+
+    def __init__(
+        self,
+        user_token: Optional[OAuth2Token] = None,
+        config: Optional[SkyConfig] = None,
+        api_name: str = "crm_constituent",
+        base_url: Optional[URL] = None,
+    ) -> None:
+        """
+        Initialize the SkyClient with optional overrides for configuration.
+        """
+        if api_name and base_url:
+            raise ValueError("Cannot specify both `api_name` and `base_url`.")
+        if not api_name and not base_url:
+            raise ValueError("Must specify either `api_name` or `base_url`.")
+
+        # Set the base URL
+        # If base URL is explicitly provided, use it
+        if base_url:
+            self.base_url = base_url
+        # Otherwise, convert the API name to a URL
+        else:
+            self.base_url = api_name_to_url(api_name)
+
+        self.config = config or SkyConfig.from_stored_config()
+        self.user_token = user_token or OAuth2Token.from_cache()
+        self.client = SkyClient(
+            base_url=str(self.base_url),
+            token=self.user_token.access_token,
+            subscription_key=self.config.subscription_key,  # type: ignore
         )
 
-    def build_request(
-        self, method: str, endpoint: str, params: QueryParamTypes | None = None, data: RequestData | None = None
-    ) -> httpx.Request:
-        url = str(self.base_url / endpoint)
-        with self.client as client:
-            return client.build_request(method=method, url=url, params=params, json=data, headers=self.headers)
+    def refresh_user_token(self, cache_token: bool = False) -> None:
+        # Have to get a new instance since the token is frozen
+        new_token = self.user_token.refresh(self.config)
+        self.user_token = new_token
+        # Update the client's token
+        self.client.token = new_token.access_token
 
-    def send_request(self, request: httpx.Request) -> dict[str, Any]:
-        cache_key = create_cache_key_from_request(request)
-        cached_json_data = self.cache.get(cache_key)
-        if cached_json_data:
-            logger.log(f"Returning cached response for {request.url}")
-            return cached_json_data
-        else:
-            logger.info(f"Sending request to {request.url}")
-            with self.client as client:
-                response = client.send(request)
-            json_data = response.json()
-            self.cache.set(cache_key, json_data)
-            logger.info(f"Set cache entry for key: {cache_key}")
-            return json_data
+        if cache_token:
+            new_token.to_cache()
 
-    def close(self):
-        if self._client:
-            self._client.close()
+    @retry(
+        retry=retry_if_result(lambda response: response.status_code == HTTPStatus.UNAUTHORIZED),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+    )
+    def request(self, api_name: str, **kwargs: Any) -> httpx.Response:
+        """
+        Make a request to the Blackbaud Sky API.
 
+        Args:
+            api_name: The name of the API to call.
+            kwargs: Additional keyword arguments to pass to the API function.
 
-@define
-class SkyAPIClient:
-    client: HTTPSyncClient
+        Returns:
+            The response from the API.
+        """
+        response = sync_functions[api_name](client=self.client, **kwargs)
 
-    def search_constituents(self, params: SearchConstituentsParams) -> dict[str, Any]:
-        request = self.client.build_request("GET", "crm-conmg/constituents/search", params=params.to_dict())
-        return self.client.send_request(request)
+        # If 401 is returned, refresh the token and retry
+        if response.status_code == HTTPStatus.UNAUTHORIZED:
+            logger.debug(f"Received {response.status_code} response from {api_name}. Refreshing token and retrying.")
+            self.user_token.refresh(self.config)
+            # Update the client's token
+            self.client.token = self.user_token.access_token
 
+        return response
 
-# sky_client = SkyAPIClient(client=HTTPSyncClient(token=OAuth2Token.from_cache(), config=SkyConfig.load()))
-#
-# query = SearchConstituentsParams(classof=1901, name="John Doe")
-# data = sky_client.search_constituents(query)
-# # print(response)
-# # print(response.json())
-#
-#
-# output_path = "output.json"
-# _ = Path(output_path).write_text(json.dumps(data, indent=2))
-#
-#
-# data2 = sky_client.search_constituents(query)
-# # print(response)
-# # print(response.json())
-#
-#
-# output_path = "output2.json"
-# _ = Path(output_path).write_text(json.dumps(data, indent=2))
-# print(data == data2)
+    @retry(
+        retry=retry_if_result(lambda response: response.status_code == HTTPStatus.UNAUTHORIZED),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+    )
+    async def request_async(self, api_name: str, **kwargs: Any) -> httpx.Response:
+        """
+        Make an asynchronous request to the Blackbaud Sky API.
 
+        Args:
+            api_name: The name of the API to call.
+            kwargs: Additional keyword arguments to pass to the API function.
 
-# search = SearchConstituentsParams(classof=1901, name="John Doe")
-# print(search)
-#
-# headers = {
-#     "Bb-Api-Subscription-Key": settings.BLACKBAUD_SUBSCRIPTION_KEY,
-#     "Authorization": f"Bearer {token_data['access_token']}"
-# }
-# print(headers)
-# # resp = requests.get("https://api.sky.blackbaud.com/constituent/v1/constituents?limit=5", headers=headers)
-# resp = requests.get(
-# "https://api.sky.blackbaud.com/crm-conmg/constituents/search?constituent_quick_find=smith&limit=5",
-# headers=headers
-# )
-# print(resp)
-# print(resp.text)
+        Returns:
+            The response from the API.
+        """
+        raise NotImplementedError("Async functions are not yet implemented")
+
+    def __getattr__(self, name: str) -> t.Callable[..., httpx.Response]:
+        """
+        Provide access to API functions as attributes.
+
+        Args:
+            name: The name of the attribute to access.
+
+        Returns:
+            The API function.
+        """
+
+        def _api_function(**kwargs: Any) -> httpx.Response:
+            return self.request(name, **kwargs)
+
+        return _api_function
+
+    def __dir__(self) -> list[str]:
+        """
+        Provide a list of attributes available on the client.
+
+        Returns:
+            A list of attribute names.
+        """
+        return list(sync_functions.keys())

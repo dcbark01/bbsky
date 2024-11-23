@@ -120,7 +120,7 @@ def test_stored_config_invalid_json(tmp_path: Path, monkeypatch: MonkeyPatch) ->
         SkyConfig.from_stored_config()
 
 
-def load_config_from_provided_file(tmp_path: Path, valid_credentials_dict: dict[str, str]) -> None:
+def test_load_config_from_provided_file(tmp_path: Path, valid_credentials_dict: dict[str, str]) -> None:
     json_file = tmp_path / "credentials.json"
     json_file.write_text(json.dumps(valid_credentials_dict))
 
@@ -131,7 +131,7 @@ def load_config_from_provided_file(tmp_path: Path, valid_credentials_dict: dict[
     assert config.subscription_key == valid_credentials_dict["subscription_key"]
 
 
-def load_config_from_env(monkeypatch: MonkeyPatch, valid_credentials_dict: dict[str, str]) -> None:
+def test_load_config_from_env(monkeypatch: MonkeyPatch, valid_credentials_dict: dict[str, str]) -> None:
     monkeypatch.setenv("BLACKBAUD_CLIENT_ID", valid_credentials_dict["client_id"])
     monkeypatch.setenv("BLACKBAUD_CLIENT_SECRET", valid_credentials_dict["client_secret"])
     monkeypatch.setenv("BLACKBAUD_REDIRECT_URI", valid_credentials_dict["redirect_uri"])
@@ -144,7 +144,7 @@ def load_config_from_env(monkeypatch: MonkeyPatch, valid_credentials_dict: dict[
     assert config.subscription_key == valid_credentials_dict["subscription_key"]
 
 
-def load_config_from_stored_file(
+def test_load_config_from_stored_file(
     tmp_path: Path, monkeypatch: MonkeyPatch, valid_credentials_dict: dict[str, str]
 ) -> None:
     json_file = tmp_path / "credentials.json"
@@ -158,7 +158,7 @@ def load_config_from_stored_file(
     assert config.subscription_key == valid_credentials_dict["subscription_key"]
 
 
-def load_config_no_sources(monkeypatch: MonkeyPatch) -> None:
+def test_load_config_no_sources(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.delenv("BLACKBAUD_CLIENT_ID", raising=False)
     monkeypatch.delenv("BLACKBAUD_CLIENT_SECRET", raising=False)
     monkeypatch.delenv("BLACKBAUD_REDIRECT_URI", raising=False)
