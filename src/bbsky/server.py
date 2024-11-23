@@ -1,16 +1,10 @@
-import base64
-import enum
-import hashlib
 import logging
-import os
 import signal
 import sys
 import threading
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlencode
 
-import httpx
 import typer
 from bottle import (  # type: ignore
     LocalRequest,
@@ -21,8 +15,15 @@ from bottle import (  # type: ignore
     run,  # type: ignore
 )  # type: ignore
 
+from bbsky.auth import (
+    Scope,
+    build_authorization_url,
+    generate_code_challenge,
+    generate_code_verifier,
+    get_random_state,
+    handle_exchange,
+)
 from bbsky.config import SkyConfig
-from bbsky.constants import TOKEN_URL
 from bbsky.data_cls import URL
 from bbsky.paths import BBSKY_CONFIG_FILE, BBSKY_TOKEN_FILE
 from bbsky.token import OAuth2Token
@@ -35,6 +36,10 @@ request: LocalRequest
 auth_code: str | None = None
 oauth_token: OAuth2Token | None = None
 config: SkyConfig | None = None
+
+code_verifier = generate_code_verifier(length=64)
+code_challenge = generate_code_challenge(code_verifier)
+code_challenge_method = "S256"
 
 
 def set_config_from_saved() -> None:
@@ -72,67 +77,6 @@ def set_config(
         set_config_from_saved()
 
 
-class Scope(enum.Enum):
-    """
-    Scope for Blackbaud API authentication
-
-    See this URL for more information:
-    https://developer.blackbaud.com/skyapi/docs/applications/scopes
-
-    """
-
-    # Add other scopes as needed
-    offline_access = "offline_access"
-
-
-def generate_code_verifier(length: int = 64) -> str:
-    return base64.urlsafe_b64encode(os.urandom(length)).decode("utf-8").replace("=", "")
-
-
-def generate_code_challenge(verifier: str) -> str:
-    sha256 = hashlib.sha256(verifier.encode("utf-8")).digest()
-    return base64.urlsafe_b64encode(sha256).decode("utf-8").replace("=", "")
-
-
-code_verifier = generate_code_verifier(length=64)
-code_challenge = generate_code_challenge(code_verifier)
-code_challenge_method = "S256"
-
-
-def get_random_state() -> str:
-    return base64.urlsafe_b64encode(os.urandom(32)).decode().replace("=", "")
-
-
-def get_state_from_oauth_url(url: URL) -> str | None:
-    return url.query.get("state")
-
-
-def redirect_to_blackbaud(
-    client_id: str, redirect_uri: str, scope: str, state: str, code_challenge: str, code_challenge_method: str
-) -> Response:
-    """Redirect to the Blackbaud authorization URL."""
-
-    # Build up auth params
-    # See docs:
-    # https://developer.blackbaud.com/skyapi/docs/authorization/auth-code-flow/confidential-application/tutorial
-    # TODO: Add in PKCE stuff
-    auth_params = {
-        "client_id": client_id,
-        "redirect_uri": redirect_uri,
-        "response_type": "code",  # should always be 'code'
-        "scope": scope,
-        "state": state,
-        "code_challenge": code_challenge,
-        "code_challenge_method": code_challenge_method,
-    }
-
-    auth_request_url = f"https://oauth2.sky.blackbaud.com/authorization?{urlencode(auth_params)}"
-
-    logger.debug(f"Blackbaud Auth Request URL: {auth_request_url}")
-
-    return redirect(auth_request_url)
-
-
 @route("/")
 def home():
     """Home page with a button to login to Blackbaud."""
@@ -160,14 +104,12 @@ def login_to_blackbaud() -> Response:
 
     state = get_random_state()
     scope = " ".join([Scope.offline_access.value])
-    resp = redirect_to_blackbaud(
-        client_id=config.client_id,
-        redirect_uri=str(config.redirect_uri),
-        scope=scope,
-        state=state,
-        code_challenge=code_challenge,
-        code_challenge_method=code_challenge_method,
+    auth_request_url = build_authorization_url(
+        config.client_id, code_challenge, code_challenge_method, config.redirect_uri, scope, state
     )
+
+    logger.debug(f"Blackbaud Auth Request URL: {auth_request_url}")
+    resp = redirect(auth_request_url)
     return resp
 
 
@@ -182,24 +124,12 @@ def callback_from_blackbaud() -> Response:
         raise ValueError("No config found. Please set the config using the set_config function.")
 
     if not auth_code:
-        return Response("Authorization code not found in the request.", status=400)
+        raise ValueError("Authorization code not found in the request.")
 
-    # Step 3: Exchange the authorization code for an access token
-    client_id = config.client_id
-    token_params: dict[str, str] = {
-        "grant_type": "authorization_code",
-        "code": auth_code,
-        "redirect_uri": str(config.redirect_uri),
-        "client_id": client_id,
-        "client_secret": config.client_secret,
-        "state": state_echoed,
-        "code_verifier": code_verifier,
-    }
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Authorization": f"Basic {base64.b64encode(client_id.encode()).decode()}",
-    }
-    response = httpx.post(str(TOKEN_URL), data=token_params, headers=headers)
+    if not state_echoed:
+        raise ValueError("State not found in the request.")
+
+    response = handle_exchange(config, auth_code, state_echoed, code_verifier)  # type: ignore
 
     global oauth_token
 
