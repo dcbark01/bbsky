@@ -25,6 +25,8 @@ dependencies = [
     "typer>=0.12.5",
     "hishel>=0.1.1",
     "blake3>=0.4.1",
+    "tenacity>=9.0.0",
+    "rich>=13.9.4",
 ]
 readme = "README.md"
 requires-python = ">= 3.10"
@@ -42,13 +44,14 @@ source = "scm"
 [tool.rye]
 managed = true
 dev-dependencies = [
-    "pyright>=1.1.387",
+    "pyright>=1.1.389",
     "pytest>=8.3.3",
     "pre-commit>=4.0.1",
     "fawltydeps>=0.17.0",
     "black>=24.10.0",
     "docformatter>=1.7.5",
-    "pyclean~=3.0.0",
+    "pyclean>=3.0.0",
+    "openapi-python-client>=0.21.7",
 ]
 universal = true
 

@@ -15,6 +15,33 @@ from bbsky.paths import BBSKY_TOKEN_FILE
 logger = logging.getLogger(__name__)
 
 
+def refresh_token(token: "OAuth2Token", config: SkyConfig) -> "OAuth2Token":
+    """Refresh the token."""
+    logger.debug("Refreshing token")
+
+    # https://developer.blackbaud.com/skyapi/docs/authorization/auth-code-flow/confidential-application/tutorial
+    client_id_b64 = base64.b64encode(config.client_id.encode()).decode()
+    client_secret_b64 = base64.b64encode(config.client_secret.encode()).decode()
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": f"Basic {client_id_b64}:{client_secret_b64}",
+    }
+
+    data = {
+        "grant_type": "refresh_token",
+        "refresh_token": token.refresh_token,
+        "client_id": config.client_id,
+        "client_secret": config.client_secret,
+    }
+
+    response = httpx.post(str(TOKEN_URL), data=data, headers=headers)
+    response.raise_for_status()
+
+    new_token = OAuth2Token(**response.json())
+
+    return new_token
+
+
 @define(slots=True, frozen=True)
 class OAuth2Token:
     """User Access Credentials for Blackbaud Sky API"""
@@ -65,31 +92,8 @@ class OAuth2Token:
         """Save the token to the default cache file."""
         self.save(BBSKY_TOKEN_FILE)
 
-    def refresh(self, token: "OAuth2Token", config: SkyConfig) -> "OAuth2Token":
-        """Refresh the token."""
-        logger.debug("Refreshing token")
-
-        # https://developer.blackbaud.com/skyapi/docs/authorization/auth-code-flow/confidential-application/tutorial
-        client_id_b64 = base64.b64encode(config.client_id.encode()).decode()
-        client_secret_b64 = base64.b64encode(config.client_secret.encode()).decode()
-        headers = {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Authorization": f"Basic {client_id_b64}:{client_secret_b64}",
-        }
-
-        data = {
-            "grant_type": "refresh_token",
-            "refresh_token": token.refresh_token,
-            "client_id": config.client_id,
-            "client_secret": config.client_secret,
-        }
-
-        response = httpx.post(str(TOKEN_URL), data=data, headers=headers)
-        response.raise_for_status()
-
-        new_token = OAuth2Token(**response.json())
-
-        return new_token
+    def refresh(self, config: SkyConfig) -> "OAuth2Token":
+        return refresh_token(self, config)
 
 
 cli = typer.Typer(help="Manage Blackbaud Sky API tokens.")
@@ -98,6 +102,7 @@ cli = typer.Typer(help="Manage Blackbaud Sky API tokens.")
 @cli.command()
 def show(
     token_file: Path = typer.Option(BBSKY_TOKEN_FILE, "-t", "--token-file", help="Input token file path"),
+    fmt: str = typer.Option("str", "-f", "--fmt", help="Output format (str, json)"),
 ) -> None:
     """Show the current token."""
 
@@ -107,7 +112,11 @@ def show(
         return
 
     token = OAuth2Token.load(token_file)
-    typer.echo(f"Token for {token.email}: {str(token)}")
+    typer.echo(f"Token file: {token_file}")
+    if fmt == "str":
+        typer.echo(f"Token for {token.email}: {str(token)}")
+    elif fmt == "json":
+        typer.echo(json.dumps(token.to_dict(), indent=4))
 
 
 @cli.command()
@@ -140,7 +149,7 @@ def refresh(
     token = OAuth2Token.load(token_file)
     config = SkyConfig.load()
 
-    new_token = token.refresh(token, config)
+    new_token = token.refresh(config)
     new_token.to_cache()
 
     typer.echo(f"Token refreshed: {str(new_token)}")

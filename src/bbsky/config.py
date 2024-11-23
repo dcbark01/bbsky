@@ -208,11 +208,12 @@ def purge(
     input_path: Path = typer.Option(BBSKY_CONFIG_FILE, "-i", "--input-path", help="Input config file path"),
 ) -> None:
     """Delete the current Blackbaud Sky API config."""
+    if not input_path.exists():  # Check if the file exists first
+        typer.echo(f"Config not found at {input_path}. Nothing to delete.")
+        return
+
     if typer.confirm(f"Are you sure you want to delete the current config '{input_path}'?"):
-        if input_path.exists():
-            input_path.unlink()
-            typer.echo(f"Config deleted at {input_path}")
-        else:
-            typer.echo(f"Config not found at {input_path}. Nothing to delete.")
+        input_path.unlink()
+        typer.echo(f"Config deleted at {input_path}")
     else:
         typer.echo("Aborted.")
