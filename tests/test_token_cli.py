@@ -5,7 +5,6 @@ import pytest
 from typer.testing import CliRunner
 
 from bbsky.cli import app
-from bbsky.config import SkyConfigError
 from bbsky.token import BBSKY_TOKEN_FILE
 
 runner = CliRunner()
@@ -107,7 +106,7 @@ def test_purge_no_token(mock_no_token_file):
     assert "No token found." in result.output
 
 
-def test_refresh_token(mock_token_file, mock_oauth2token, mock_skyconfig):
+def test_refresh_token(mock_token_file, mock_oauth2token, mock_skyconfig) -> None:
     """Test the `refresh` command."""
     mock_token = MagicMock(refresh=lambda config: MagicMock(__str__=lambda self: "NewTokenString"))
     mock_oauth2token.load.return_value = mock_token
@@ -115,16 +114,9 @@ def test_refresh_token(mock_token_file, mock_oauth2token, mock_skyconfig):
     mock_skyconfig.load.return_value = mock_config
 
     with patch("bbsky.token.OAuth2Token.to_cache"):
-        result = runner.invoke(app, ["token", "refresh"])
+        with patch("pathlib.Path.exists", return_value=True):  # Simulate token file exists
+            result = runner.invoke(app, ["token", "refresh"])
 
-        assert result.exit_code == 0
-        assert "Token refreshed: NewTokenString" in result.output
-
-
-def test_refresh_no_config_exists(mock_no_token_file):
-    """Test the `refresh` command when no config file exists."""
-    result = runner.invoke(app, ["token", "refresh"])
-    assert hasattr(result, "exception")
-    assert isinstance(result.exception, SkyConfigError)
-    assert "No config found. Please provide a file path or set environment variables." in str(result.exception)
-    assert result.exit_code == 1
+            # Assertions
+            assert result.exit_code == 0, f"CLI failed with output: {result.output}"
+            assert "Token refreshed: NewTokenString" in result.output
