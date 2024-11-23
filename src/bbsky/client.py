@@ -3,6 +3,7 @@ import typing as t
 from http import HTTPStatus
 from typing import Any, Optional
 
+import hishel
 import httpx
 from attr import define, field
 from tenacity import retry, retry_if_result, stop_after_attempt, wait_exponential
@@ -39,7 +40,7 @@ class SkyClient(AuthenticatedClient):
         self._add_header("Authorization", f"Bearer {self.token}")
         self._add_header("Bb-Api-Subscription-Key", self.subscription_key)
 
-    def get_httpx_client(self) -> httpx.Client:
+    def get_httpx_client(self) -> hishel.CacheClient | httpx.Client:
         """
         Override of `AuthenticatedClient.get_httpx_client`.
 
@@ -49,7 +50,7 @@ class SkyClient(AuthenticatedClient):
             raise ValueError("Subscription key is required to authenticate.")
         if self._client is None:
             self._add_required_headers()
-            self._client = httpx.Client(
+            self._client = hishel.CacheClient(
                 base_url=str(self._base_url),
                 cookies=self._cookies,
                 headers=self._headers,
@@ -179,8 +180,6 @@ class BBSky:
             The API function.
         """
 
-        # return lambda **kwargs: self.request(name, **kwargs)
-        # Add typing to the lambda function
         def _api_function(**kwargs: Any) -> httpx.Response:
             return self.request(name, **kwargs)
 
