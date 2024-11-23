@@ -41,27 +41,29 @@ def test_create_config() -> None:
         "subscription_key": "test_subscription_key",
     }
 
-    with patch("pathlib.Path.write_text") as mock_write:
-        result = runner.invoke(
-            cli,
-            [
-                "create",
-                "--client-id",
-                config_data["client_id"],
-                "--client-secret",
-                config_data["client_secret"],
-                "--redirect-uri",
-                config_data["redirect_uri"],
-                "--subscription-key",
-                config_data["subscription_key"],
-                "--output-path",
-                str(BBSKY_CONFIG_FILE),
-            ],
-        )
+    with patch("pathlib.Path.exists", return_value=True):  # Simulate file exists
+        with patch("typer.confirm", return_value=True):  # Simulate user confirms overwrite
+            with patch("pathlib.Path.write_text") as mock_write:
+                result = runner.invoke(
+                    cli,
+                    [
+                        "create",
+                        "--client-id",
+                        config_data["client_id"],
+                        "--client-secret",
+                        config_data["client_secret"],
+                        "--redirect-uri",
+                        config_data["redirect_uri"],
+                        "--subscription-key",
+                        config_data["subscription_key"],
+                        "--output-path",
+                        str(BBSKY_CONFIG_FILE),
+                    ],
+                )
 
-        assert result.exit_code == 0
-        assert f"Config saved to {BBSKY_CONFIG_FILE}" in result.output
-        mock_write.assert_called_once()
+                assert result.exit_code == 0
+                assert f"Config saved to {BBSKY_CONFIG_FILE}" in result.output
+                mock_write.assert_called_once()
 
 
 def test_show_config_json(mock_config_file: None, mock_skyconfig: MagicMock) -> None:

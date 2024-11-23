@@ -109,7 +109,6 @@ class SkyConfig:
 cli = typer.Typer(help="Create and manage Blackbaud Sky API config.")
 
 
-# Convert the create command
 @cli.command()
 def create(
     client_id: str = typer.Option(..., prompt=True, help="Client ID"),
@@ -120,6 +119,12 @@ def create(
 ) -> None:
     """Create a new Blackbaud Sky API config."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Check if the file already exists, and prompt the user to overwrite it
+    if output_path.exists():
+        if not typer.confirm(f"Config file already exists at {output_path}. Overwrite?"):
+            typer.echo("Aborted.")
+            return
 
     config = SkyConfig(client_id, client_secret, URL(redirect_uri), subscription_key)
     config.to_json_file(output_path)
