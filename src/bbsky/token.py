@@ -1,16 +1,19 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import typer
-from attrs import asdict, define
+from attrs import define, field
 
 from bbsky.auth import handle_refresh
 from bbsky.config import SkyConfig
+from bbsky.data_cls import TZ, DateTime, Duration, structure, unstructure
 from bbsky.paths import BBSKY_TOKEN_FILE
 
 logger = logging.getLogger(__name__)
+
+TimeUnit = Literal["days", "hr", "min", "sec"]
 
 
 @define(slots=True, frozen=True)
@@ -32,28 +35,50 @@ class OAuth2Token:
     given_name: str
     mode: str
 
+    created_at: DateTime = field(factory=lambda: DateTime.now(tz=TZ))
+
     def __str__(self):
         token_trunc = self.access_token[:4] + "..." + self.access_token[-4:]
         return (
             f"Access Token: {token_trunc} (expires in {self.expires_in} seconds) | Refresh Token: {self.refresh_token}"
         )
 
+    @property
+    def expires_at(self) -> DateTime:
+        return self.created_at.add(seconds=self.expires_in)
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "OAuth2Token":
-        return cls(**data)
+        return structure(data, cls)
 
     @classmethod
     def load(cls, input_file: Path) -> "OAuth2Token":
         """Load the token from a file."""
-        return cls(**json.loads(input_file.read_text()))
+        # return cls(**json.loads(input_file.read_text()))
+        return cls.from_dict(json.loads(input_file.read_text()))
 
     @classmethod
     def from_cache(cls) -> "OAuth2Token":
         """Load the token from the default cache file."""
         return cls.load(BBSKY_TOKEN_FILE)
 
+    def get_ttl(self) -> Duration:
+        """Get time remaining until token expiration.
+
+        Should be 0 if the token is expired.
+        """
+        current_time = DateTime.now(tz=TZ)
+        duration = Duration(seconds=(self.expires_at - current_time).in_seconds())
+        if duration.in_seconds() < 0:
+            return Duration(seconds=0)
+        return duration
+
+    def is_expired(self, buffer_seconds: int = 300) -> bool:
+        """Check if the token is expired or will expire soon."""
+        return self.get_ttl() <= Duration(seconds=buffer_seconds)
+
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        return unstructure(self)
 
     def save(self, output_file: Path) -> None:
         """Save the token to a file."""
