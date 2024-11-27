@@ -91,11 +91,18 @@ def handle_refresh(config: SkyConfig, token_data: dict[str, str]) -> httpx.Respo
         "Content-Type": "application/x-www-form-urlencoded",
         "Authorization": f"Basic {client_id_b64}:{client_secret_b64}",
     }
+
+    # https://developer.blackbaud.com/skyapi/docs/authorization/auth-code-flow/confidential-application/tutorial#refresh-access-token
+    # Indicates whether to preserve the refresh_token and maintain its value and expiration date.
+    # This allows you to refresh access tokens with the same refresh token until the expiration date.
+    # By default, this value is set to false and each time you refresh an expired access token,
+    # you receive a new refresh token with a sliding window expiration of 365 days.
     data = {
         "grant_type": "refresh_token",
         "refresh_token": token_data["refresh_token"],
         "client_id": config.client_id,
         "client_secret": config.client_secret,
+        "preserve_refresh_token": "false",
     }
     response = httpx.post(str(TOKEN_URL), data=data, headers=headers)
     response.raise_for_status()
