@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+import pendulum
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 
@@ -27,6 +28,7 @@ def valid_token_dict() -> dict[str, Any]:
         "family_name": "Doe",
         "given_name": "John",
         "mode": "test_mode",
+        "created_at": "2024-11-27T16:45:59.979732Z",
     }
 
 
@@ -50,6 +52,7 @@ def test_token_from_dict(valid_token_dict: dict[str, Any], valid_token: OAuth2To
     assert valid_token.family_name == valid_token_dict["family_name"]
     assert valid_token.given_name == valid_token_dict["given_name"]
     assert valid_token.mode == valid_token_dict["mode"]
+    assert isinstance(valid_token.created_at, pendulum.DateTime)
 
 
 def test_token_to_dict(valid_token: OAuth2Token, valid_token_dict: dict[str, Any]):
@@ -134,3 +137,31 @@ def refresh_token_invalid_response(mock_httpx_post, valid_token: OAuth2Token, va
 
     with pytest.raises(TypeError):
         valid_token.refresh(valid_token, valid_config)
+
+
+def get_ttl_valid_token(valid_token: OAuth2Token):
+    ttl = valid_token.get_ttl()
+    assert ttl.in_seconds() > 0
+
+
+def get_ttl_expired_token(valid_token_dict: dict[str, Any]):
+    valid_token_dict["expires_in"] = -3600
+    expired_token = OAuth2Token.from_dict(valid_token_dict)
+    ttl = expired_token.get_ttl()
+    assert ttl.in_seconds() == 0
+
+
+def is_expired_valid_token(valid_token: OAuth2Token):
+    assert not valid_token.is_expired()
+
+
+def is_expired_token_with_buffer(valid_token_dict: dict[str, Any]):
+    valid_token_dict["expires_in"] = 100
+    token_with_buffer = OAuth2Token.from_dict(valid_token_dict)
+    assert token_with_buffer.is_expired(buffer_seconds=200)
+
+
+def is_expired_expired_token(valid_token_dict: dict[str, Any]):
+    valid_token_dict["expires_in"] = -3600
+    expired_token = OAuth2Token.from_dict(valid_token_dict)
+    assert expired_token.is_expired()
